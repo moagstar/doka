@@ -1,0 +1,5 @@
+- preview doesn't update until move
+- remove exposure doesn't remove from list
+- ctrl-s ctrl-o for backup
+- undo / redo
+- title in print mode

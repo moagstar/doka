@@ -1,0 +1,838 @@
+/* Digital Darkroom Simulator Styles */
+
+/* Base Styles */
+:root {
+  --primary-color: rgba(184, 19, 19, 0.8);
+  --secondary-color: #3c0306;
+  --accent-color: #ffaba1;
+  --light-color: #ff0000;
+  --dark-color: #2c3e50;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --border-radius: 4px;
+
+  /* Ilford Multigrade Filter Colors */
+  --grade-00-color: #C8F0C8; /* 00 */
+  --grade-0-color: #DCF0B4;  /* 0 */
+  --grade-0-5-color: #E8EAA0; /* 0½ */
+  --grade-1-color: #EBC88C;  /* 1 */
+  --grade-1-5-color: #F0B478; /* 1½ */
+  --grade-2-color: #F0A064;  /* 2 */
+  --grade-2-5-color: #F08850; /* 2½ */
+  --grade-3-color: #F07040;  /* 3 */
+  --grade-3-5-color: #E85040; /* 3½ */
+  --grade-4-color: #DC4050;  /* 4 */
+  --grade-4-5-color: #B43860; /* 4½ */
+  --grade-5-color: #943868;  /* 5 */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #9e0a0a;
+  background-color: #f5f5f5;
+  padding: 0;
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.container {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events:auto;    /* <-- let the canvas receive the events */
+}
+
+/* Main Content */
+main {
+  padding: 3px;
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: row; /* Always row layout (side by side) */
+}
+
+/* Panels */
+.panel {
+  background-color: white;
+  border-radius: var(--border-radius);
+  margin: 3px;
+  padding: 5px;
+  overflow: auto;
+  color: #9e0a0a;
+}
+
+/* Images Section (Left Side) */
+#images-section {
+  flex: 3; /* Takes up more space than exposures section */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Exposures Section (Right Side) */
+#exposures-section {
+  flex: 1;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* Controls Container */
+.controls-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex: 1;
+  min-width: 150px;
+  gap: 20px;
+}
+
+/* Paper Selection */
+.paper-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* Save/Load Controls */
+.save-load-controls {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  max-width: 150px; /* Reduced from 200px to optimize space */
+}
+
+.save-load-controls .button,
+.save-load-controls label.button {
+  flex: 1;
+  text-align: center;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* Back button with icon */
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#paper-type {
+  padding: 2px;
+  border-radius: var(--border-radius);
+  border: none;
+  background-color: #2a0000; /* Dark red to match theme */
+  color: red;;
+  font-size: 1rem;
+}
+
+.paper-info {
+  color: red;
+  padding: 8px;
+  border-radius: var(--border-radius);
+}
+
+/* Paper tone swatches */
+.paper-tone {
+  margin-top: 15px;
+}
+
+.tone-swatches {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.tone-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.tone-swatch span {
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Images Container */
+.images-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  flex: 1;
+  overflow: hidden;
+  max-height: calc(100% - 100px); /* Reserve space for dodge/burn tools */
+  pointer-events: auto;
+  gap: 10px; /* Add gap between negative and result containers */
+}
+
+.negative-container, .result-container {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative; /* For positioning the upload area and mask canvas */
+  border-radius: var(--border-radius);
+  background-color: var(--light-color);
+  pointer-events:auto;    /* <-- let the canvas receive the events */
+}
+
+.negative-container { 
+  position: relative;
+  flex: 1; /* Match the flex property of result-container to balance sizes */
+}
+
+#negative-image     {
+  display:block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  pointer-events: none;
+  filter: invert(100%);
+}
+
+.result-container {
+  flex: 1;
+}
+
+.result-container canvas {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+}
+
+/* Upload Area */
+#image-upload {
+  display: none;
+}
+
+/* Placeholder Message */
+.placeholder-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #9e0a0a;
+  font-size: 1rem;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Images */
+.negative-container img, .result-container img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--border-radius);
+}
+
+/* Mask Canvas */
+#mask-canvas {
+  position: absolute;
+  z-index: 2;
+  pointer-events: auto;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Preview Canvas */
+#preview-canvas {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Dodge/Burn Tools */
+.dodge-burn-tools {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: var(--light-color);
+  border-radius: var(--border-radius);
+}
+
+.tool-buttons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.tool-button {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px;
+}
+
+.square-button {
+  width: 48px;
+  height: 48px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1/1;
+  font-size: 1.5rem;
+}
+
+.tool-icon {
+  width: 100%;
+  height: 100%;
+  filter: invert(12%) sepia(83%) saturate(5786%) hue-rotate(357deg) brightness(96%) contrast(113%); /* Make the SVG #9e0a0a */
+}
+
+.tool-button.active {
+  background-color: var(--accent-color);
+}
+
+.tool-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  align-items: center;
+}
+
+.control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+}
+
+.control label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.control label .tool-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.control input[type="range"] {
+  width: 100px;
+}
+
+/* Styling for range input sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Slider Track */
+input[type="range"]::-webkit-slider-runnable-track {
+  background: #3c0306;
+  height: 5px;
+  border-radius: 5px;
+}
+
+input[type="range"]::-moz-range-track {
+  background: #3c0306;
+  height: 5px;
+  border-radius: 5px;
+}
+
+/* Slider Thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -5px;
+  background-color: red;
+  height: 15px;
+  width: 15px;
+  border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-thumb {
+  border: none;
+  background-color: #9e0a0a;
+  height: 15px;
+  width: 15px;
+  border-radius: 50%;
+}
+
+/* Ensure exposures list takes up most of the space */
+#exposures-list {
+  flex: 1 1 auto;
+  min-height: 0; /* Allow the list to shrink below its content size */
+  height: 100%; /* Take up all available height */
+  overflow-y: auto;
+  padding-right: 5px;
+  margin-bottom: 5px; /* Reduced space between list and controls */
+}
+
+/* Exposure Controls */
+.exposure-controls {
+  margin: 5px 0;
+  text-align: center;
+  flex-shrink: 0; /* Prevent the controls from shrinking */
+  width: 100%; /* Ensure the container takes full width */
+}
+
+/* Full width Add Exposure button */
+#add-exposure {
+  width: 100%; /* Make button full width */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#add-exposure .tool-icon {
+  width: 24px; /* Fixed width for the icon */
+  height: 24px; /* Fixed height for the icon */
+  margin-right: 8px; /* Add some space between icon and text */
+}
+
+/* Histogram */
+#histogram-container {
+  background-color: rgba(30, 0, 0, 0.8); /* Dark with red tinge to match darkroom theme */
+  border-radius: var(--border-radius);
+  flex-shrink: 0; /* Prevent the histogram from shrinking */
+}
+
+#histogram-canvas {
+  width: 100%;
+  height: 150px;
+  background-color: rgba(40, 0, 0, 0.8); /* Darker red background to match darkroom theme */
+  border: none;
+  border-radius: var(--border-radius);
+}
+
+.exposure-item {
+  background-color: var(--light-color);
+  padding: 8px;
+  border-radius: var(--border-radius);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exposure-item:hover {
+  background-color: #e0e0e0;
+}
+
+.exposure-item.selected {
+  background-color: #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.exposure-settings {
+  margin: 8px 0;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.setting {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setting label {
+  font-weight: bold;
+  font-size: 0.8rem;
+  width: 40px; /* Fixed width for labels */
+  flex-shrink: 0;
+}
+
+.setting select {
+  width: auto;
+  min-width: 60px;
+  height: 36px;
+  padding: 2px;
+  border-radius: var(--border-radius);
+  border: none;
+  background-color: #2a0000; /* Dark red to match theme */
+  color: #ff0000;
+  font-size: 1rem;
+}
+
+/* Custom Grade Selector */
+.grade-selector {
+  position: relative;
+  width: auto;
+  min-width: 60px;
+  flex: 1;
+}
+
+.grade-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px; /* Fixed width to match min-width of selector */
+  height: 36px;
+  border-radius: var(--border-radius);
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  color: #ff0000;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+
+.grade-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 120px; /* Fixed width for dropdown */
+  background-color: white;
+  border-radius: var(--border-radius);
+  z-index: 10;
+  display: none;
+  box-shadow: var(--shadow);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.grade-options.show {
+  display: block;
+}
+
+.grade-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  cursor: pointer;
+  font-weight: bold;
+  color: red;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+
+.grade-option:hover {
+  opacity: 0.9;
+}
+
+/* Grade colors */
+.grade-0 { background-color: var(--grade-00-color); }
+.grade-1 { background-color: var(--grade-0-color); }
+.grade-2 { background-color: var(--grade-0-5-color); }
+.grade-3 { background-color: var(--grade-1-color); }
+.grade-4 { background-color: var(--grade-1-5-color); }
+.grade-5 { background-color: var(--grade-2-color); }
+.grade-6 { background-color: var(--grade-2-5-color); }
+.grade-7 { background-color: var(--grade-3-color); }
+.grade-8 { background-color: var(--grade-3-5-color); }
+.grade-9 { background-color: var(--grade-4-color); }
+.grade-10 { background-color: var(--grade-4-5-color); }
+.grade-11 { background-color: var(--grade-5-color); }
+
+/* Exposure Content Layout */
+.exposure-content {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* Settings Column */
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+/* Dodge Mask Preview */
+.dodge-mask-preview-container {
+  width: 90px;
+  height: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.dodge-mask-preview {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--border-radius);
+  background-color: white;
+}
+
+/* Buttons */
+.button {
+  background-color: var(--secondary-color);
+  color: #9e0a0a;
+  border: none;
+  padding: 8px 15px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 2rem;
+  transition: background-color 0.3s;
+}
+
+.button:hover {
+  background-color: var(--primary-color);
+}
+
+.button.primary {
+  background-color: var(--accent-color);
+}
+
+.button.primary:hover {
+  background-color: #c0392b;
+}
+
+.remove-exposure {
+  background: url("dustbin.svg") no-repeat center/contain;
+  width: 24px;
+  height: 24px;
+  border: none;
+  cursor: pointer;
+  filter: invert(12%) sepia(83%) saturate(5786%) hue-rotate(357deg) brightness(96%) contrast(113%); /* Make the SVG #9e0a0a */
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+  padding: 0;
+  margin: 4px;
+  background-color: transparent;
+}
+
+.remove-exposure:hover {
+  opacity: 1;
+}
+
+.remove-exposure:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+  filter: invert(12%) sepia(83%) saturate(5786%) hue-rotate(357deg) brightness(150%) contrast(90%); /* Lighter version of #9e0a0a when disabled */
+}
+
+/* Utility Classes */
+.hidden {
+  display: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  main {
+    flex-direction: column; /* Stack on small screens */
+  }
+
+  #exposures-section {
+    max-width: none; /* Full width on small screens */
+  }
+
+  /* On small screens, the setting-row still works well as a row */
+  /* No need to change it to a column layout */
+
+  .setting select {
+    padding: 6px; /* Slightly larger touch targets on mobile */
+  }
+
+  .button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  /* Responsive paper tone swatches */
+  .tone-swatches {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .tone-swatch {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .tone-swatch span {
+    margin-bottom: 0;
+    margin-right: 10px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  /* Reset body styles for printing */
+  body {
+    overflow: visible;
+    height: auto;
+    background-color: white;
+    color: black;
+  }
+
+  .container {
+    height: auto;
+    overflow: visible;
+  }
+
+  main {
+    flex-direction: column;
+    overflow: visible;
+    padding: 0;
+  }
+
+  /* Hide everything except what we want to print */
+  #images-section,
+  .controls-container > *:not(.paper-selection),
+  .images-container,
+  .mask-tools,
+  .exposure-controls,
+  #histogram-container,
+  .remove-exposure,
+  .placeholder-message {
+    display: none !important;
+  }
+
+  /* Show the paper selection and exposures list */
+  .paper-selection {
+    display: block !important;
+    position: fixed;
+    top: 20px;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    margin: 20px 0;
+    text-align: center;
+  }
+
+  /* Add a title for the printed page */
+  .paper-selection::before {
+    content: "Digital Darkroom - Exposure List";
+    display: block;
+    font-size: 20pt;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #9e0a0a;
+  }
+
+  #paper-type {
+    font-size: 16pt;
+    font-weight: bold;
+    border: none;
+    background: none;
+    text-align: center;
+    width: 100%;
+    color: #9e0a0a;
+  }
+
+  /* Format the exposures section */
+  #exposures-section {
+    max-width: none;
+    width: 100%;
+    overflow: visible;
+    border: none;
+    margin: 0;
+    padding: 0;
+    padding-top: 80px; /* Space for the fixed paper selection */
+  }
+
+  #exposures-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .exposure-item {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    background-color: white;
+    border-radius: 0;
+    padding: 15px;
+    cursor: default;
+  }
+
+  .exposure-item:hover {
+    background-color: white;
+  }
+
+  .exposure-content {
+    display: flex;
+    align-items: center;
+  }
+
+  .dodge-mask-preview-container {
+    width: 120px;
+    height: 120px;
+  }
+
+  .dodge-mask-preview {
+  }
+
+  .settings-column {
+    margin-left: 15px;
+  }
+
+  .setting {
+    margin-bottom: 10px;
+  }
+
+  .setting label {
+    font-weight: bold;
+    font-size: 12pt;
+  }
+
+  /* Make grade colors visible in print */
+  .grade-display {
+    font-weight: bold;
+    font-size: 12pt;
+  }
+
+  /* Remove hover effects for print */
+  .exposure-item:hover,
+  .grade-option:hover {
+    opacity: 1;
+    background-color: inherit;
+  }
+
+  /* Hide elements with class 'hidden' */
+  .hidden {
+    display: none !important;
+  }
+}

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Darkroom Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Darkroom styling - emulating the feel of being in a darkroom */
+        html, body {
+            background: black;
+            color: #9e0a0a;
+        }
+
+        body {
+            background-image: url("background.png");
+            background-repeat: repeat;
+            background-size: 512px auto;
+        }
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.85);
+        }
+
+        .panel {
+            background-color: rgba(0, 0, 0, 0.9); /* Very dark without red tinge */
+            color: #9e0a0a;
+        }
+
+        .negative-container, .result-container {
+            background-color: #000000; /* Pure black */
+        }
+
+        .placeholder-message {
+            color: #9e0a0a;
+        }
+
+        select, input, button {
+            background-color: #1a1a1a; /* Dark gray instead of dark red */
+            color: #9e0a0a;
+            border: none;
+        }
+
+        /* Make option elements readable */
+        option {
+            background-color: #1a1a1a; /* Dark gray instead of dark red */
+            color: #9e0a0a;
+        }
+
+        .exposure-item {
+            background-color: rgba(20, 20, 20, 0.8); /* Dark gray without red tinge */
+        }
+
+        .exposure-item:hover {
+            background-color: rgba(40, 40, 40, 0.8); /* Slightly lighter on hover */
+        }
+
+        .exposure-item.selected {
+            background-color: rgba(50, 50, 50, 0.8);
+        }
+
+        /* Make tool icons visible against dark background */
+        .tool-icon {
+            filter: invert(12%) sepia(83%) saturate(5786%) hue-rotate(357deg) brightness(96%) contrast(113%); /* Make the SVG #9e0a0a */
+        }
+
+        /* Adjust histogram container */
+        #histogram-container {
+            background-color: rgba(20, 20, 20, 0.8); /* Dark gray without red tinge */
+        }
+
+        #histogram-canvas {
+            background-color: rgba(30, 30, 30, 0.8); /* Dark gray without red tinge */
+            border: none;
+        }
+
+        /* Removed safelight effect (red overlay) as requested */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <main>
+            <section id="images-section" class="panel">
+                <div class="controls-container">
+                    <div class="toolbar">
+                        <div class="tool-buttons">
+                            <button id="back" class="button tool-button square-button" title="Back"><img src="arrow-left.svg" alt="Back" class="tool-icon"></button>
+                            <button id="dodge-tool" class="button tool-button square-button" title="Dodge"><img src="paintbrush.svg" alt="Dodge" class="tool-icon"></button>
+                            <button id="erase-tool" class="button tool-button square-button" title="Erase"><img src="eraser.svg" alt="Erase" class="tool-icon"></button>
+                            <button id="clear-mask" class="button tool-button square-button" title="Clear Mask"><img src="square-xmark.svg" alt="Clear Mask" class="tool-icon"></button>
+                        </div>
+                        <div class="tool-controls hidden">
+                            <div class="control">
+                                <label><img src="up-right-and-down-left-from-center.svg" alt="Size" class="tool-icon"></label>
+                                <input type="range" id="brush-size" min="1" max="100" value="20">
+                            </div>
+                            <div class="control">
+                                <label><img src="feather-pointed.svg" alt="Feather" class="tool-icon"></label>
+                                <input type="range" id="brush-feather" min="0" max="100" value="10">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="images-container">
+                    <div class="negative-container" id="negative-placeholder">
+                        <img id="negative-image" class="hidden" alt="B&W negative preview">
+                        <canvas id="mask-canvas" class="hidden"></canvas>
+                    </div>
+                    <div class="result-container">
+                        <div id="result-placeholder" class="placeholder-message">
+                            <p>Processed image will appear here</p>
+                        </div>
+                        <canvas id="result-canvas" class="hidden"></canvas>
+                        <img id="result-image" class="hidden" alt="Final processed image">
+                    </div>
+                </div>
+            </section>
+
+            <section id="exposures-section" class="panel">
+                <div class="paper-selection">
+                    <select id="paper-type">
+                        <option value="ilford-multigrade">Ilford Multigrade</option>
+                        <option value="kodak-polymax">Kodak Polymax</option>
+                        <option value="foma-variant">Foma Variant</option>
+                        <option value="oriental-seagull">Oriental Seagull</option>
+                    </select>
+                    <div id="paper-info" class="paper-info hidden">
+                        <!-- Paper characteristics hidden to save space -->
+                    </div>
+                </div>
+                <div id="exposures-list">
+                    <!-- Exposures will be added here dynamically -->
+                </div>
+                <div class="exposure-controls">
+                    <button id="add-exposure" class="button" title="Add Exposure"><img src="plus.svg" alt="Add Exposure" class="tool-icon"></button>
+                </div>
+                <div id="histogram-container" class="hidden">
+                    <canvas id="histogram-canvas" width="300" height="150"></canvas>
+                </div>
+                <div class="exposure-template hidden">
+                    <div class="exposure-item">
+                        <span class="exposure-number hidden"></span>
+                        <div class="exposure-settings">
+                            <div class="exposure-content">
+                                <div class="dodge-mask-preview-container">
+                                    <canvas class="dodge-mask-preview"></canvas>
+                                </div>
+                                <div class="settings-column">
+                                    <div class="setting-row">
+                                        <div class="setting">
+                                            <select class="exposure-time">
+                                                <option value="1">1s</option>
+                                                <option value="1.06">1.06s</option>
+                                                <option value="1.12">1.12s</option>
+                                                <option value="1.19">1.19s</option>
+                                                <option value="1.26">1.26s</option>
+                                                <option value="1.33">1.33s</option>
+                                                <option value="1.41">1.41s</option>
+                                                <option value="1.5">1.5s</option>
+                                                <option value="1.59">1.59s</option>
+                                                <option value="1.68">1.68s</option>
+                                                <option value="1.78">1.78s</option>
+                                                <option value="1.89">1.89s</option>
+                                                <option value="2">2s</option>
+                                                <option value="2.12">2.12s</option>
+                                                <option value="2.24">2.24s</option>
+                                                <option value="2.38">2.38s</option>
+                                                <option value="2.52">2.52s</option>
+                                                <option value="2.67">2.67s</option>
+                                                <option value="2.83">2.83s</option>
+                                                <option value="3">3s</option>
+                                                <option value="3.17">3.17s</option>
+                                                <option value="3.36">3.36s</option>
+                                                <option value="3.56">3.56s</option>
+                                                <option value="3.78">3.78s</option>
+                                                <option value="4">4s</option>
+                                                <option value="4.24">4.24s</option>
+                                                <option value="4.49">4.49s</option>
+                                                <option value="4.76">4.76s</option>
+                                                <option value="5.04">5.04s</option>
+                                                <option value="5.34">5.34s</option>
+                                                <option value="5.66">5.66s</option>
+                                                <option value="6">6s</option>
+                                                <option value="6.35">6.35s</option>
+                                                <option value="6.73">6.73s</option>
+                                                <option value="7.13">7.13s</option>
+                                                <option value="7.56">7.56s</option>
+                                                <option value="8">8s</option>
+                                                <option value="8.48">8.48s</option>
+                                                <option value="8.98">8.98s</option>
+                                                <option value="9.51">9.51s</option>
+                                                <option value="10.08">10.08s</option>
+                                                <option value="10.67">10.67s</option>
+                                                <option value="11.31">11.31s</option>
+                                                <option value="12">12s</option>
+                                                <option value="12.7">12.7s</option>
+                                                <option value="13.45">13.45s</option>
+                                                <option value="14.25">14.25s</option>
+                                                <option value="15.1">15.1s</option>
+                                                <option value="16" selected>16s</option>
+                                                <option value="16.95">16.95s</option>
+                                                <option value="17.96">17.96s</option>
+                                                <option value="19.03">19.03s</option>
+                                                <option value="20.16">20.16s</option>
+                                                <option value="21.35">21.35s</option>
+                                                <option value="22.63">22.63s</option>
+                                                <option value="24">24s</option>
+                                                <option value="25.4">25.4s</option>
+                                                <option value="26.91">26.91s</option>
+                                                <option value="28.51">28.51s</option>
+                                                <option value="30.2">30.2s</option>
+                                                <option value="32">32s</option>
+                                                <option value="33.9">33.9s</option>
+                                                <option value="35.92">35.92s</option>
+                                                <option value="38.05">38.05s</option>
+                                                <option value="40.32">40.32s</option>
+                                                <option value="42.7">42.7s</option>
+                                                <option value="45.25">45.25s</option>
+                                                <option value="48">48s</option>
+                                                <option value="50.8">50.8s</option>
+                                                <option value="53.82">53.82s</option>
+                                                <option value="57.02">57.02s</option>
+                                                <option value="60.4">60.4s</option>
+                                                <option value="64">64s</option>
+                                                <option value="67.8">67.8s</option>
+                                                <option value="71.84">71.84s</option>
+                                                <option value="76.1">76.1s</option>
+                                                <option value="80.63">80.63s</option>
+                                                <option value="85.4">85.4s</option>
+                                                <option value="90.51">90.51s</option>
+                                                <option value="96">96s</option>
+                                                <option value="101.6">101.6s</option>
+                                                <option value="107.63">107.63s</option>
+                                                <option value="114.04">114.04s</option>
+                                                <option value="120.8">120.8s</option>
+                                                <option value="128">128s</option>
+                                            </select>
+                                        </div>
+                                        <div class="setting">
+                                            <div class="grade-selector">
+                                                <div class="grade-display grade-5">2</div>
+                                                <div class="grade-options">
+                                                    <div class="grade-option grade-0" data-value="0">00</div>
+                                                    <div class="grade-option grade-1" data-value="1">0</div>
+                                                    <div class="grade-option grade-2" data-value="2">0½</div>
+                                                    <div class="grade-option grade-3" data-value="3">1</div>
+                                                    <div class="grade-option grade-4" data-value="4">1½</div>
+                                                    <div class="grade-option grade-5" data-value="5">2</div>
+                                                    <div class="grade-option grade-6" data-value="6">2½</div>
+                                                    <div class="grade-option grade-7" data-value="7">3</div>
+                                                    <div class="grade-option grade-8" data-value="8">3½</div>
+                                                    <div class="grade-option grade-9" data-value="9">4</div>
+                                                    <div class="grade-option grade-10" data-value="10">4½</div>
+                                                    <div class="grade-option grade-11" data-value="11">5</div>
+                                                </div>
+                                                <select class="exposure-grade hidden">
+                                                    <option value="0">00</option>
+                                                    <option value="1">0</option>
+                                                    <option value="2">0½</option>
+                                                    <option value="3">1</option>
+                                                    <option value="4">1½</option>
+                                                    <option value="5" selected>2</option>
+                                                    <option value="6">2½</option>
+                                                    <option value="7">3</option>
+                                                    <option value="8">3½</option>
+                                                    <option value="9">4</option>
+                                                    <option value="10">4½</option>
+                                                    <option value="11">5</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="remove-exposure" title="Remove exposure"></button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Load external libraries from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.2.1/dist/fabric.min.js"></script>
+
+    <!-- Load our application script -->
+    <script type="text/javascript" src="script.js"></script>
+</body>
+</html>
