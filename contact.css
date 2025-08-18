@@ -1,0 +1,174 @@
+/* Contact Sheet specific styles */
+
+.contact-container{
+  height:100vh;
+  overflow-y:auto;
+  scroll-snap-type: y mandatory;
+  z-index: 4;
+}
+
+.contact-sheet{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  scroll-snap-align:start;
+  padding: 2vmin;
+  z-index: 4;
+}
+
+.sheet-grid{
+  --cols: 5; --rows: 4;
+  display:grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-auto-rows: auto;
+  gap: var(--gap-y) var(--gap-x);
+  width:min(95vw, 1500px);
+  z-index: 4;
+}
+
+/* Make single frame smaller when there's only one frame */
+.sheet-grid {
+  /* Default width for multiple frames */
+  width: min(95vw, 1500px);
+}
+.sheet-grid.single-frame {
+  /* Smaller width for a single frame */
+  width: min(60vw, 800px);
+}
+
+.frame {
+  position:relative;
+  aspect-ratio: var(--frame-aspect);
+  background:#000;
+  width:100%;
+  overflow:visible;
+}
+
+.frame::after {
+  content:"";
+  position:absolute; inset:0;
+  background: center/100% 100% no-repeat url("frame-tile.png");
+  z-index: 3;
+  pointer-events:none;
+}
+
+.window{
+  position:absolute;
+  left:var(--win-left); right:var(--win-right);
+  top:var(--win-top); bottom:var(--win-bottom);
+  overflow:hidden;
+  z-index: 1;
+}
+
+.hit{
+  position:absolute; inset:0;
+  cursor:pointer;
+  z-index: 2;
+}
+
+.hit > img {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  display:block;
+  z-index:1;
+  filter: grayscale(100%);
+}
+
+.hit > img.portrait {
+  width: 69%;
+  height: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center center;
+  object-fit: contain;
+}
+
+.hit::after{
+  content:"";
+  position:absolute;
+  inset: var(--hover-inset);
+  opacity:0;
+  transform: scale(var(--hover-scale)) rotate(var(--wax-rot,0deg));
+  transition: opacity .14s ease, transform .14s ease;
+  pointer-events:none;
+  z-index: 5;
+  image-rendering:auto;
+}
+
+.is-existing .hit::after {
+  background: center/101% 101% no-repeat var(--hover-img-existing);
+}
+
+.is-empty .hit::after {
+  background: center/101% 101% no-repeat var(--hover-img-empty);
+}
+.hit:hover::after,
+.hit:focus-visible::after{
+  opacity:1;
+}
+
+.frame:hover .dustbin-icon {
+  opacity: 0.35;
+}
+
+.dustbin-icon:hover {
+  opacity: 0.7 !important;
+}
+
+.folder-select-container {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 20;
+}
+
+.folder-select-button {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.2s;
+}
+
+.folder-select-button:hover {
+  background-color: #444;
+}
+
+.folder-path {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #ccc;
+  max-width: 300px;
+  word-break: break-all;
+}
+
+.edited-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: var(--primary-color);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 10;
+}
+
+.select-folder-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-color);
+  font-size: 18px;
+  text-align: center;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}

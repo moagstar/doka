@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Digital Darkroom - Darkroom</title>
+
+<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="darkroom.css">
+<link rel="stylesheet" href="print.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="darkroom-body">
+
+<!-- Darkroom View -->
+<div id="darkroom-view" class="darkroom-view active">
+  <div class="container">
+    <main>
+      <section id="images-section" class="panel">
+        <div class="controls-container">
+          <div class="toolbar">
+            <div class="tool-buttons">
+              <button id="back" class="button tool-button square-button" title="Back"><i class="fa-solid fa-film tool-icon"></i></button>
+              <button id="undo" class="button tool-button square-button" title="Undo"><i class="fa-solid fa-undo tool-icon"></i></button>
+              <button id="redo" class="button tool-button square-button" title="Redo"><i class="fa-solid fa-redo tool-icon"></i></button>
+              <button id="dodge-tool" class="button tool-button square-button" title="Dodge"><i class="fa-solid fa-paintbrush tool-icon"></i></button>
+              <button id="erase-tool" class="button tool-button square-button" title="Erase"><i class="fa-solid fa-eraser tool-icon"></i></button>
+              <button id="clear-mask" class="button tool-button square-button" title="Clear Mask"><i class="fa-solid fa-square-xmark tool-icon"></i></button>
+            </div>
+            <div class="tool-controls hidden">
+              <div class="control">
+                <label><i class="fa-solid fa-up-right-and-down-left-from-center tool-icon"></i></label>
+                <input type="range" id="brush-size" min="1" max="100" value="20">
+              </div>
+              <div class="control">
+                <label><i class="fa-solid fa-feather-pointed tool-icon"></i></label>
+                <input type="range" id="brush-feather" min="0" max="100" value="10">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="images-container">
+          <div class="negative-container" id="negative-placeholder">
+            <img id="negative-image" class="hidden" alt="B&W negative preview">
+            <canvas id="mask-canvas" class="hidden"></canvas>
+          </div>
+          <div class="result-container">
+            <canvas id="result-canvas" class="hidden"></canvas>
+            <img id="result-image" class="hidden" alt="Final processed image">
+          </div>
+        </div>
+      </section>
+
+      <section id="exposures-section" class="panel">
+        <div class="paper-selection">
+          <select id="paper-type">
+            <option value="ilford-multigrade">Ilford Multigrade</option>
+            <option value="kodak-polymax">Kodak Polymax</option>
+            <option value="foma-variant">Foma Variant</option>
+            <option value="oriental-seagull">Oriental Seagull</option>
+          </select>
+        </div>
+        <div id="exposures-list">
+          <!-- Exposures will be added here dynamically -->
+        </div>
+        <div class="exposure-controls">
+          <button id="add-exposure" class="button" title="Add Exposure"><i class="fa-solid fa-plus tool-icon"></i></button>
+        </div>
+        <div id="histogram-container" class="hidden">
+          <canvas id="histogram-canvas" width="300" height="150"></canvas>
+        </div>
+        <div class="exposure-template hidden">
+          <div class="exposure-item">
+            <span class="exposure-number hidden"></span>
+            <div class="exposure-settings">
+              <div class="exposure-content">
+                <div class="dodge-mask-preview-container">
+                  <canvas class="dodge-mask-preview"></canvas>
+                </div>
+                <div class="settings-column">
+                  <div class="exposure-buttons">
+                    <button class="button tool-button square-button move-up-button" title="Move Up"><i class="fa-solid fa-up-long tool-icon"></i></button>
+                    <button class="button tool-button square-button move-down-button" title="Move Down"><i class="fa-solid fa-down-long tool-icon"></i></button>
+                    <button class="button tool-button square-button clone-button" title="Clone"><i class="fa-solid fa-clone tool-icon"></i></button>
+                    <button class="button tool-button square-button invert-button" title="Invert Dodge Mask"><i class="fa-solid fa-arrows-rotate tool-icon"></i></button>
+                    <button class="button tool-button square-button delete-button" title="Delete"><i class="fa-solid fa-trash-can tool-icon"></i></button>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting">
+                      <select class="exposure-time">
+                        <option value="1">1</option>
+                        <option value="1.06">01.06</option>
+                        <option value="1.12">01.12</option>
+                        <option value="1.19">01.19</option>
+                        <option value="1.26">01.26</option>
+                        <option value="1.33">01.33</option>
+                        <option value="1.41">01.41</option>
+                        <option value="1.5">01.50</option>
+                        <option value="1.59">01.59</option>
+                        <option value="1.68">01.68</option>
+                        <option value="1.78">01.78</option>
+                        <option value="1.89">01.89</option>
+                        <option value="2">02.00</option>
+                        <option value="2.12">02.12</option>
+                        <option value="2.24">02.24</option>
+                        <option value="2.38">02.38</option>
+                        <option value="2.52">02.52</option>
+                        <option value="2.67">02.67</option>
+                        <option value="2.83">02.83</option>
+                        <option value="3">03.00</option>
+                        <option value="3.17">03.17</option>
+                        <option value="3.36">03.36</option>
+                        <option value="3.56">03.56</option>
+                        <option value="3.78">03.78</option>
+                        <option value="4">04.00</option>
+                        <option value="4.24">04.24</option>
+                        <option value="4.49">04.49</option>
+                        <option value="4.76">04.76</option>
+                        <option value="5.04">05.04</option>
+                        <option value="5.34">05.34</option>
+                        <option value="5.66">05.66</option>
+                        <option value="6">06.00</option>
+                        <option value="6.35">06.35</option>
+                        <option value="6.73">06.73</option>
+                        <option value="7.13">07.13</option>
+                        <option value="7.56">07.56</option>
+                        <option value="8">08.00</option>
+                        <option value="8.48">8.48</option>
+                        <option value="8.98">08.98</option>
+                        <option value="9.51">09.51</option>
+                        <option value="10.08">10.08</option>
+                        <option value="10.67">10.67</option>
+                        <option value="11.31">11.31</option>
+                        <option value="12">12.00</option>
+                        <option value="12.7">12.70</option>
+                        <option value="13.45">13.45</option>
+                        <option value="14.25">14.25</option>
+                        <option value="15.1">15.10</option>
+                        <option value="16" selected>16.00</option>
+                        <option value="16.95">16.95</option>
+                        <option value="17.96">17.96</option>
+                        <option value="19.03">19.03</option>
+                        <option value="20.16">20.16</option>
+                        <option value="21.35">21.35</option>
+                        <option value="22.63">22.63</option>
+                        <option value="24">24.00</option>
+                        <option value="25.4">25.40</option>
+                        <option value="26.91">26.91</option>
+                        <option value="28.51">28.51</option>
+                        <option value="30.2">30.20</option>
+                        <option value="32">32.00</option>
+                        <option value="33.9">33.90</option>
+                        <option value="35.92">35.92</option>
+                        <option value="38.05">38.05</option>
+                        <option value="40.32">40.32</option>
+                        <option value="42.7">42.7</option>
+                        <option value="45.25">45.25</option>
+                        <option value="48">48.00</option>
+                        <option value="50.8">50.80</option>
+                        <option value="53.82">53.82</option>
+                        <option value="57.02">57.02</option>
+                        <option value="60.4">60.40</option>
+                        <option value="64">64.00</option>
+                        <option value="67.8">67.80</option>
+                        <option value="71.84">71.84</option>
+                        <option value="76.1">76.10</option>
+                        <option value="80.63">80.63</option>
+                        <option value="85.4">85.40</option>
+                        <option value="90.51">90.51</option>
+                        <option value="96">96.00</option>
+                      </select>
+                    </div>
+                    <div class="setting">
+                      <div class="grade-selector">
+                        <div class="grade-display grade-5">2</div>
+                        <div class="grade-options">
+                          <div class="grade-option grade-0" data-value="0">00</div>
+                          <div class="grade-option grade-1" data-value="1">0</div>
+                          <div class="grade-option grade-2" data-value="2">0½</div>
+                          <div class="grade-option grade-3" data-value="3">1</div>
+                          <div class="grade-option grade-4" data-value="4">1½</div>
+                          <div class="grade-option grade-5" data-value="5">2</div>
+                          <div class="grade-option grade-6" data-value="6">2½</div>
+                          <div class="grade-option grade-7" data-value="7">3</div>
+                          <div class="grade-option grade-8" data-value="8">3½</div>
+                          <div class="grade-option grade-9" data-value="9">4</div>
+                          <div class="grade-option grade-10" data-value="10">4½</div>
+                          <div class="grade-option grade-11" data-value="11">5</div>
+                        </div>
+                        <select class="exposure-grade hidden">
+                          <option value="0">00</option>
+                          <option value="1">0</option>
+                          <option value="2">0½</option>
+                          <option value="3">1</option>
+                          <option value="4">1½</option>
+                          <option value="5" selected>2</option>
+                          <option value="6">2½</option>
+                          <option value="7">3</option>
+                          <option value="8">3½</option>
+                          <option value="9">4</option>
+                          <option value="10">4½</option>
+                          <option value="11">5</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Contact Sheet View (hidden) -->
+<div id="contact-view" class="contact-view hidden">
+  <!-- This is just a placeholder to make the view switching work -->
+</div>
+
+<script>
+(function(){
+  function pxToMm(px){ return px * (25.4 / 96); } // CSS px -> mm (96dpi)
+
+  function updatePrintVars(){
+    const root = document.documentElement;
+
+    // Header height
+    const header = document.querySelector('.paper-selection');
+    const headerMm = header ? Math.ceil(pxToMm(header.offsetHeight)) : 0;
+    if (headerMm) root.style.setProperty('--header-h', headerMm + 'mm');
+
+    // Measure a representative meta block (time/grade area)
+    const meta = document.querySelector('.exposure-item .settings-column');
+    if (meta){
+      const metaMm = Math.ceil(pxToMm(meta.offsetHeight)) + 4; // +4mm breathing room
+      // Landscape needs a bit less; portrait gets a bit more to be safe
+      root.style.setProperty('--meta-h-landscape', Math.max(26, metaMm - 6) + 'mm');
+      root.style.setProperty('--meta-h-portrait', (metaMm + 6) + 'mm');
+    }
+  }
+
+  // Update when printing and when layout may change
+  window.addEventListener('beforeprint', updatePrintVars);
+  window.addEventListener('resize', updatePrintVars);
+  document.addEventListener('DOMContentLoaded', updatePrintVars);
+})();
+</script>
+
+<!-- Load external libraries from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.2.1/dist/fabric.min.js"></script>
+
+<!-- Load our application scripts -->
+<script type="text/javascript" src="common.js"></script>
+<script type="module" src="darkroom.js"></script>
+</body>
+</html>

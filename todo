@@ -1,5 +1,8 @@
-- preview doesn't update until move
-- remove exposure doesn't remove from list
-- ctrl-s ctrl-o for backup
-- undo / redo
-- title in print mode
+- crop / rotate
+- fix invert dodge mask bug
+- flash step
+- tone / bleach step
+- minimum exposure (activation time for paper)
+- improved layout for landscape pictures
+- flow slider
+- sync with local filesystem (detect newly added / removed files)

@@ -1,0 +1,180 @@
+/* =======================================================================
+   Darkroom Print — 4 exposures per A4 page (2×2), with paper header shown
+   Load AFTER your normal CSS. Keep browser "Headers & footers: OFF"
+   and "Margins: None" in the print dialog.
+   ======================================================================= */
+
+@page { size: A4 portrait; margin: 0; }
+
+@media print {
+  /* Predictable sizing + keep colors */
+  *, *::before, *::after { box-sizing: border-box !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ---------- Tunables (mm) ---------- */
+  :root{
+    --body-margin: 10mm;   /* inner margin on all sides */
+    --header-h: 14mm;      /* height reserved for the paper selector bar */
+    --gap: 4mm;            /* grid gap between cards (both directions) */
+    --page-h: 297mm;       /* A4 portrait height */
+    --available: calc(var(--page-h) - (2 * var(--body-margin)) - var(--header-h));
+    --card-fudge: 1.5mm;   /* safety so two rows always fit (raise if your printer clips) */
+  }
+
+  /* ---------- Paper header (visible) ---------- */
+  .paper-selection{
+    display: block !important;
+    position: fixed !important;
+    top: 0; left: 0; right: 0;
+    height: var(--header-h) !important;
+    margin: 0 !important; padding: 0 !important; border: 0 !important;
+    text-align: center !important;
+    background: transparent !important;
+  }
+
+  /* Push content below header + apply inner margins */
+  body{
+    margin: calc(var(--body-margin) + var(--header-h))
+            var(--body-margin)
+            var(--body-margin)
+            var(--body-margin) !important;
+    background: #fff !important;
+  }
+
+  /* Strip spacing/borders that steal print height */
+  .container, main, #images-section, #exposures-section, #exposures-list{
+    margin: 0 !important; padding: 0 !important; border: 0 !important;
+  }
+
+  /* Hide non-print UI */
+  .controls-container,
+  .toolbar,
+  #histogram-container,
+  #histogram-canvas,
+  .images-container,
+  .mask-tools,
+  .exposure-controls,
+  .placeholder-message,
+  .exposure-buttons { display: none !important; }
+
+  /* ---------- Grid: exactly 2×2 per page ---------- */
+  #exposures-list{
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: var(--gap) !important;
+    overflow: visible !important;
+  }
+
+  /* Each card = half the printable height (minus one row gap) */
+  .exposure-item{
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc( (var(--available) - var(--gap)) / 2 - var(--card-fudge) ) !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: hidden !important;
+    background: #fff !important;
+    border: 1px solid #000 !important;   /* thin print-safe border */
+    border-radius: 0 !important;
+  }
+
+  /* Clean page break after each group of four cards */
+  .exposure-item:nth-of-type(4n){
+    break-after: page; page-break-after: always;
+  }
+
+  /* ---------- Inside each card ---------- */
+
+  /* The content wrapper should stretch to fill the card */
+  .exposure-content{
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* The preview area eats ALL remaining space */
+  .dodge-mask-preview-container{
+    /* OVERRIDE screen rules (e.g., width: 90px) */
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 0 2mm 0 !important;
+    display: block !important;
+    aspect-ratio: auto !important;        /* ignore any screen aspect locks */
+    align-items: initial !important;       /* neutralize flex-centering if present */
+    justify-content: initial !important;
+  }
+
+  /* Make sure portrait/landscape helper classes don't constrain height */
+  .dodge-mask-preview-container.photo-portrait,
+  .dodge-mask-preview-container.photo-landscape{
+    height: auto !important;
+  }
+
+  /* The actual image/canvas fills the preview box and hugs the top */
+  .dodge-mask-preview-container canvas,
+  .dodge-mask-preview,
+  canvas.dodge-mask-preview,
+  .negative-container img,
+  .result-container img{
+    display: block !important;
+    width: 90% !important;
+    height: 90% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: contain !important;
+    object-position: top center !important;
+    border: 0 !important;
+  }
+
+  /* Meta area (time/grade/etc) sizes itself naturally below the preview */
+  .settings-column{
+    flex: 0 0 auto !important;
+    margin: 2mm 0 0 0 !important;
+    min-height: 0 !important;
+  }
+
+  /* Ensure controls are print-legible */
+  .exposure-time, .grade-display{
+    font-weight: bold !important;
+  }
+
+  /* Neutralize any color theme for clean B/W except mask preview (canvas) */
+  body, .exposure-item, .settings-column, .grade-display, .exposure-time {
+    background: #fff !important; color: #000 !important;
+  }
+}
+
+@media print {
+  /* Hide the entire Images panel, not just its contents */
+  #images-section {
+    display: none !important;
+  }
+
+  /* Let the Exposures panel take the full page width */
+  #exposures-section {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  /* Don’t keep the screen flex row layout */
+  main {
+    display: block !important;   /* collapse to a single column */
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Nuke dark-theme backgrounds so the page isn’t maroon */
+  .darkroom-view,
+  .darkroom-view .container,
+  .darkroom-view .panel,
+  .darkroom-body {
+    background: #fff !important;
+  }
+}

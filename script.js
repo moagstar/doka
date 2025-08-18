@@ -3,6 +3,37 @@
  * A web-based application that simulates darkroom printing process
  */
 
+// --- Simple IndexedDB helpers for storing handles ---
+const DB_NAME = 'darkroom-db';
+const STORE_NAME = 'kv';
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbSet(key, value) {
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+function idbGet(key) {
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
 // --- D–logE helpers ---
 
 function log10(x) { return Math.log(x) / Math.LN10; }
@@ -204,7 +235,6 @@ const DarkroomSimulator = {
     this.setupEventListeners();
     this.updatePaperInfo();
     if (this.exposures.length === 0) this.addExposure();
-    this.updateRemoveButtons();
 
     // Check for URL parameters
     this.checkUrlParameters();
@@ -212,10 +242,6 @@ const DarkroomSimulator = {
 
   // Set up event listeners
   setupEventListeners: function() {
-    // Back button
-    document.getElementById('back').addEventListener('click', () => {
-      window.location.href = 'index.html';
-    });
 
     // Image upload
     const imageUploadEl = document.getElementById('image-upload');
@@ -258,7 +284,10 @@ const DarkroomSimulator = {
     // Brush size and feather controls
     document.getElementById('brush-size').addEventListener('input', (e) => {
       this.brushSize = parseInt(e.target.value);
-      document.getElementById('brush-size-value').textContent = this.brushSize;
+      const brushSizeValueEl = document.getElementById('brush-size-value');
+      if (brushSizeValueEl) {
+        brushSizeValueEl.textContent = this.brushSize;
+      }
 
       // Update preview circles when brush size changes
       if (this.maskCanvas && !this.isDrawing) {
@@ -279,7 +308,10 @@ const DarkroomSimulator = {
 
     document.getElementById('brush-feather').addEventListener('input', (e) => {
       this.brushFeather = parseInt(e.target.value);
-      document.getElementById('brush-feather-value').textContent = this.brushFeather;
+      const brushFeatherValueEl = document.getElementById('brush-feather-value');
+      if (brushFeatherValueEl) {
+        brushFeatherValueEl.textContent = this.brushFeather;
+      }
 
       // Update preview circles when feather changes
       if (this.maskCanvas && !this.isDrawing) {
@@ -300,25 +332,35 @@ const DarkroomSimulator = {
 
     // Initialize mask canvas when the DISPLAYED img loads
     this.negativeImageEl.addEventListener('load', () => {
-      this.initMaskCanvas();
-      this.positionMaskCanvasToImage();
+      // Defer to ensure <img> has non-zero layout box
+      requestAnimationFrame(() => {
+        this.initMaskCanvas();
+        this.positionMaskCanvasToImage();
+        this.updateMaskCanvas();
+        this.updateAllDodgeMaskPreviews();
+      });
     });
 
     // Reinitialize mask canvas when window is resized
     window.addEventListener('resize', () => {
       if (this.negativeImage && this.maskCanvas) {
-        // Use a debounce to avoid excessive reinitializations during resize
-        if (this.resizeTimeout) {
-          clearTimeout(this.resizeTimeout);
-        }
+        if (this.resizeTimeout) clearTimeout(this.resizeTimeout);
         this.resizeTimeout = setTimeout(() => {
           this.initMaskCanvas();
           this.positionMaskCanvasToImage();
-          this.updateMaskData();
+
+          // Rehydrate the on-screen canvas from the selected exposure’s saved mask
+          this.updateMaskCanvas();
+
+          // Refresh the little previews too
+          this.updateAllDodgeMaskPreviews();
+
+          // Re-render the result
           this.requestProcess();
         }, 200);
       }
     });
+
   },
 
   // Initialize the mask canvas
@@ -326,12 +368,12 @@ const DarkroomSimulator = {
     if (!this.negativeImage) return;
 
     this.maskCanvas = document.getElementById('mask-canvas');
-    this.maskCtx    = this.maskCanvas.getContext('2d');
+    this.maskCtx    = this.maskCanvas.getContext('2d', { willReadFrequently: true });
 
     // Create preview canvas if it doesn't exist
     if (!this.previewCanvas) {
       this.previewCanvas = document.createElement('canvas');
-      this.previewCtx = this.previewCanvas.getContext('2d');
+      this.previewCtx = this.previewCanvas.getContext('2d', { willReadFrequently: true });
       this.previewCanvas.id = 'preview-canvas';
       this.previewCanvas.style.position = 'absolute';
       this.previewCanvas.style.pointerEvents = 'none';
@@ -368,6 +410,8 @@ const DarkroomSimulator = {
     if (!this.maskData || this.maskData.length !== w * h) {
       this.maskData = new Float32Array(w * h);
     }
+
+    this.positionMaskCanvasToImage();
   },
 
   // Set up mouse events for mask painting
@@ -473,12 +517,18 @@ const DarkroomSimulator = {
         // Adjust feather with Shift + wheel (percentage of brush size)
         self.brushFeather = Math.max(0, Math.min(100, self.brushFeather - Math.sign(e.deltaY) * 5));
         document.getElementById('brush-feather').value = self.brushFeather;
-        document.getElementById('brush-feather-value').textContent = self.brushFeather;
+        const brushFeatherValueEl = document.getElementById('brush-feather-value');
+        if (brushFeatherValueEl) {
+          brushFeatherValueEl.textContent = self.brushFeather;
+        }
       } else {
         // Adjust size with wheel (percentage of image size)
         self.brushSize = Math.max(1, Math.min(100, self.brushSize - Math.sign(e.deltaY) * 5));
         document.getElementById('brush-size').value = self.brushSize;
-        document.getElementById('brush-size-value').textContent = self.brushSize;
+        const brushSizeValueEl = document.getElementById('brush-size-value');
+        if (brushSizeValueEl) {
+          brushSizeValueEl.textContent = self.brushSize;
+        }
       }
 
       // Update preview circles when brush size or feather changes
@@ -509,6 +559,9 @@ const DarkroomSimulator = {
 
     // Clear previous preview
     this.clearPreviewCircles();
+
+    // Only draw the preview circles if a mask tool (dodge or erase) is active
+    if (!this.isMaskToolActive) return;
 
     // Calculate scaled brush size and feather
     // brushSize is now a percentage of the image's smallest dimension
@@ -641,10 +694,16 @@ const DarkroomSimulator = {
 
   // match canvas CSS box to the displayed <img> box
   positionMaskCanvasToImage: function () {
-    if (!this.negativeImageEl) return;
-    const imgRect  = this.negativeImageEl.getBoundingClientRect();
-    const contRect = document.querySelector('.negative-container').getBoundingClientRect();
+    if (!this.negativeImageEl || !this.maskCanvas) return;
 
+    const imgRect = this.negativeImageEl.getBoundingClientRect();
+    // If the image hasn't laid out yet, try again next frame.
+    if (imgRect.width < 2 || imgRect.height < 2) {
+      requestAnimationFrame(() => this.positionMaskCanvasToImage());
+      return;
+    }
+
+    const contRect = document.querySelector('.negative-container').getBoundingClientRect();
     const left = imgRect.left - contRect.left;
     const top  = imgRect.top  - contRect.top;
 
@@ -681,6 +740,13 @@ const DarkroomSimulator = {
     if (!exp) return;
 
     const W = this.maskCanvas.width, H = this.maskCanvas.height;
+
+    // Check if canvas dimensions are valid
+    if (W <= 0 || H <= 0) {
+      console.warn('Invalid mask canvas dimensions:', W, 'x', H);
+      return;
+    }
+
     if (!exp.mask || exp.mask.length !== W * H) {
       exp.mask = new Float32Array(W * H);
     }
@@ -767,6 +833,12 @@ const DarkroomSimulator = {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
+    // Check if image has valid dimensions
+    if (!img.width || !img.height) {
+      console.error('Image has invalid dimensions:', img.width, 'x', img.height);
+      return; // Exit early to prevent error
+    }
+
     // Set canvas dimensions to match image
     canvas.width = img.width;
     canvas.height = img.height;
@@ -834,16 +906,21 @@ const DarkroomSimulator = {
       el.src = negativeImg.src;
       el.classList.remove('hidden');
 
-      document.querySelector('.tool-controls').classList.remove('hidden');
-      document.getElementById('mask-canvas').classList.remove('hidden');
+      document.querySelector('.tool-controls')?.classList.remove('hidden');
+      document.getElementById('mask-canvas')?.classList.remove('hidden');
 
       if (this.maskCtx) {
         this.maskCtx.clearRect(0, 0, this.maskCanvas.width, this.maskCanvas.height);
         if (this.maskData) this.maskData.fill(0);
       }
 
-      // Update all dodge mask previews
-      this.updateAllDodgeMaskPreviews();
+      // Defer to ensure <img> has non-zero layout box
+      requestAnimationFrame(() => {
+        this.initMaskCanvas();
+        this.positionMaskCanvasToImage();
+        this.updateMaskCanvas();
+        this.updateAllDodgeMaskPreviews();
+      });
 
       if (this.exposures.length > 0) this.requestProcess();
     };
@@ -878,16 +955,38 @@ const DarkroomSimulator = {
 
   // Add a new exposure
   addExposure: function() {
+    // Check if there was only one exposure before adding the new one
+    const wasOnlyOneExposure = this.exposures.length === 1;
+
+    // Initialize mask data if we have a negative image
+    let initialMask = null;
+    if (this.negativeImage) {
+      const width = this.negativeImage.naturalWidth;
+      const height = this.negativeImage.naturalHeight;
+      initialMask = new Float32Array(width * height);
+    }
+
     // Create new exposure object
     const exposure = {
       id: Date.now(), // Unique ID
       time: 32, // Default time (seconds)
       grade: 5, // Default grade (0-11)
-      mask: null // Mask data for this exposure (will be initialized when selected)
+      mask: initialMask // Initialize mask data for the exposure
     };
 
     // Add to exposures array
     this.exposures.push(exposure);
+
+    // If there was only one exposure before, enable its delete button
+    if (wasOnlyOneExposure) {
+      const existingExposureElement = document.querySelector('.exposure-item');
+      if (existingExposureElement) {
+        const deleteButton = existingExposureElement.querySelector('.delete-button');
+        if (deleteButton) {
+          deleteButton.disabled = false;
+        }
+      }
+    }
 
     // Create exposure UI element
     this.createExposureElement(exposure);
@@ -896,9 +995,6 @@ const DarkroomSimulator = {
     if (this.exposures.length === 1) {
       this.selectExposure(exposure.id);
     }
-
-    // Update remove buttons state
-    this.updateRemoveButtons();
 
     // Automatically process image after adding a new exposure
     if (this.negativeImage) {
@@ -938,6 +1034,9 @@ const DarkroomSimulator = {
 
     // Update the dodge mask preview for this exposure
     this.updateDodgeMaskPreview(exposureId);
+
+    // ← NEW: reflect selection immediately in the main render
+    this.requestProcess(0);
   },
 
   // Update all dodge mask previews
@@ -953,6 +1052,14 @@ const DarkroomSimulator = {
   // Update mask canvas to show the selected exposure's mask
   updateMaskCanvas: function() {
     if (!this.maskCtx || !this.selectedExposureId) return;
+
+    // If CSS size isn't ready yet, defer one frame
+    const imgRect = this.negativeImageEl?.getBoundingClientRect?.() || { width: 0, height: 0 };
+    if (imgRect.width < 2 || imgRect.height < 2 ||
+        !this.maskCanvas || this.maskCanvas.width < 2 || this.maskCanvas.height < 2) {
+      requestAnimationFrame(() => this.updateMaskCanvas());
+      return;
+    }
 
     // Get the selected exposure
     const exposure = this.exposures.find(exp => exp.id === this.selectedExposureId);
@@ -990,6 +1097,8 @@ const DarkroomSimulator = {
 
     // Update the maskData property to match the selected exposure's mask
     this.maskData = exposure.mask;
+
+    this.requestProcess(0);
   },
 
   // Create exposure UI element
@@ -1014,6 +1123,42 @@ const DarkroomSimulator = {
       if (e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') return;
 
       this.selectExposure(exposure.id);
+    });
+
+    // Add event listeners for the exposure buttons
+    const moveUpButton = exposureItem.querySelector('.move-up-button');
+    const moveDownButton = exposureItem.querySelector('.move-down-button');
+    const deleteButton = exposureItem.querySelector('.delete-button');
+
+    // Find the index of the exposure
+    const index = this.exposures.findIndex(exp => exp.id === exposure.id);
+
+    // Disable buttons based on position and count
+    // Disable delete button if there's only one exposure
+    if (this.exposures.length === 1) {
+      deleteButton.disabled = true;
+    }
+
+    // Disable move up button if it's the first exposure
+    if (index === 0) {
+      moveUpButton.disabled = true;
+    }
+
+    // Disable move down button if it's the last exposure
+    if (index === this.exposures.length - 1) {
+      moveDownButton.disabled = true;
+    }
+
+    moveUpButton.addEventListener('click', () => {
+      this.moveExposureUp(exposure.id);
+    });
+
+    moveDownButton.addEventListener('click', () => {
+      this.moveExposureDown(exposure.id);
+    });
+
+    deleteButton.addEventListener('click', () => {
+      this.deleteExposure(exposure.id);
     });
 
     // Set exposure number
@@ -1131,44 +1276,107 @@ const DarkroomSimulator = {
       }
     });
 
-    // Remove exposure button
-    exposureElement.querySelector('.remove-exposure').addEventListener('click', () => {
-      // Check if this is the selected exposure
-      const isSelected = this.selectedExposureId === exposure.id;
-
-      // Remove from exposures array
-      const index = this.exposures.findIndex(exp => exp.id === exposure.id);
-      if (index !== -1) {
-        this.exposures.splice(index, 1);
-      }
-
-      // Remove element from UI
-      exposureElement.remove();
-
-      // Update exposure numbers
-      this.updateExposureNumbers();
-
-      // Update remove buttons state
-      this.updateRemoveButtons();
-
-      // If the removed exposure was selected, select another one if available
-      if (isSelected && this.exposures.length > 0) {
-        // Select the previous exposure if available, otherwise the first one
-        const newIndex = Math.max(0, index - 1);
-        this.selectExposure(this.exposures[newIndex].id);
-      } else if (this.exposures.length === 0) {
-        // Clear selected exposure if no exposures left
-        this.selectedExposureId = null;
-      }
-
-      // Automatically process image after removing an exposure
-      if (this.negativeImage) {
-        this.requestProcess();
-      }
-    });
-
     // Add to DOM
     exposuresList.appendChild(exposureElement.firstElementChild);
+  },
+
+  // Move an exposure up in the list
+  moveExposureUp: function(exposureId) {
+    // Find the index of the exposure
+    const index = this.exposures.findIndex(exp => exp.id === exposureId);
+
+    // If it's already at the top, do nothing
+    if (index <= 0) return;
+
+    // Swap with the exposure above it
+    const temp = this.exposures[index];
+    this.exposures[index] = this.exposures[index - 1];
+    this.exposures[index - 1] = temp;
+
+    // Update the DOM
+    this.refreshExposuresList();
+
+    // Select the moved exposure
+    this.selectExposure(exposureId);
+
+    // Update all views
+    this.requestProcess();
+  },
+
+  // Move an exposure down in the list
+  moveExposureDown: function(exposureId) {
+    // Find the index of the exposure
+    const index = this.exposures.findIndex(exp => exp.id === exposureId);
+
+    // If it's already at the bottom, do nothing
+    if (index === -1 || index >= this.exposures.length - 1) return;
+
+    // Swap with the exposure below it
+    const temp = this.exposures[index];
+    this.exposures[index] = this.exposures[index + 1];
+    this.exposures[index + 1] = temp;
+
+    // Update the DOM
+    this.refreshExposuresList();
+
+    // Select the moved exposure
+    this.selectExposure(exposureId);
+
+    // Update all views
+    this.requestProcess();
+  },
+
+  // Delete an exposure
+  deleteExposure: function(exposureId) {
+    // Find the index of the exposure
+    const index = this.exposures.findIndex(exp => exp.id === exposureId);
+    if (index === -1) return;
+
+    // Store the ID of the exposure to select after deletion
+    let nextSelectedId = null;
+
+    // If we're deleting the selected exposure, select the next one or the previous one
+    if (this.selectedExposureId === exposureId) {
+      if (index < this.exposures.length - 1) {
+        // Select the next exposure
+        nextSelectedId = this.exposures[index + 1].id;
+      } else if (index > 0) {
+        // Select the previous exposure
+        nextSelectedId = this.exposures[index - 1].id;
+      }
+      // If there's no next or previous exposure, selectedExposureId will be null
+    }
+
+    // Remove the exposure from the array
+    this.exposures.splice(index, 1);
+
+    // Update the DOM
+    this.refreshExposuresList();
+
+    // Select the next exposure if available
+    if (nextSelectedId) {
+      this.selectExposure(nextSelectedId);
+    } else if (this.exposures.length > 0) {
+      this.selectExposure(this.exposures[0].id);
+    } else {
+      this.selectedExposureId = null;
+    }
+
+    // Update all views
+    this.requestProcess();
+  },
+
+  // Refresh the exposures list in the DOM
+  refreshExposuresList: function() {
+    // Clear the exposures list
+    const exposuresList = document.getElementById('exposures-list');
+    exposuresList.innerHTML = '';
+
+    // Recreate all exposure elements
+    for (let i = 0; i < this.exposures.length; i++) {
+      const exposure = this.exposures[i];
+      this.createExposureElement(exposure);
+    }
   },
 
   // Update the dodge mask preview for a specific exposure
@@ -1184,10 +1392,19 @@ const DarkroomSimulator = {
     if (!previewCanvas) return;
 
     // Set canvas dimensions to match the aspect ratio of the negative image
-    const aspectRatio = this.negativeImage.naturalWidth / this.negativeImage.naturalHeight;
+    const naturalWidth = this.negativeImage.naturalWidth || 1;  // Ensure non-zero value
+    const naturalHeight = this.negativeImage.naturalHeight || 1;  // Ensure non-zero value
+    const aspectRatio = naturalWidth / naturalHeight;
+
     const container = previewCanvas.parentElement;
-    const containerWidth = container.offsetWidth;
-    const containerHeight = container.offsetHeight;
+    const containerWidth = container.offsetWidth || 1;  // Ensure non-zero value
+    const containerHeight = container.offsetHeight || 1;  // Ensure non-zero value
+
+    if (containerWidth < 2 || containerHeight < 2) {
+      // Wait for layout, then try again
+      requestAnimationFrame(() => this.updateDodgeMaskPreview(exposureId));
+      return;
+    }
 
     // Calculate dimensions that fit within the container while maintaining aspect ratio
     let canvasWidth, canvasHeight;
@@ -1202,6 +1419,10 @@ const DarkroomSimulator = {
       canvasWidth = containerHeight * aspectRatio;
     }
 
+    // Ensure canvas dimensions are at least 1 pixel
+    canvasWidth = Math.max(1, Math.floor(canvasWidth));
+    canvasHeight = Math.max(1, Math.floor(canvasHeight));
+
     previewCanvas.width = canvasWidth;
     previewCanvas.height = canvasHeight;
 
@@ -1215,6 +1436,12 @@ const DarkroomSimulator = {
 
     // If there's no mask data, we're done
     if (!exposure.mask) return;
+
+    // Check if canvas dimensions are valid before getting image data
+    if (canvasWidth <= 0 || canvasHeight <= 0) {
+      console.warn('Invalid canvas dimensions for dodge mask preview:', canvasWidth, canvasHeight);
+      return;
+    }
 
     // Get image data to apply the mask
     const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
@@ -1260,19 +1487,8 @@ const DarkroomSimulator = {
     });
   },
 
-  // Update remove buttons state based on number of exposures
-  updateRemoveButtons: function() {
-    const removeButtons = document.querySelectorAll('.remove-exposure');
-    const shouldDisable = this.exposures.length <= 1;
-
-    removeButtons.forEach(button => {
-      button.disabled = shouldDisable;
-    });
-  },
-
   processImage: function() {
     if (!this.negativeImage || this.exposures.length === 0) {
-      alert('Please upload an image and add at least one exposure');
       return;
     }
     const paper = this.papers[this.paperType];
@@ -1283,6 +1499,13 @@ const DarkroomSimulator = {
     // Size working canvas once
     const W = this.negativeImage.naturalWidth;
     const H = this.negativeImage.naturalHeight;
+
+    // Check if image dimensions are valid
+    if (W <= 0 || H <= 0) {
+      console.warn('Invalid image dimensions in processImage:', W, 'x', H);
+      return;
+    }
+
     if (this.workCanvas.width !== W || this.workCanvas.height !== H) {
       this.workCanvas.width = W;
       this.workCanvas.height = H;
@@ -1384,13 +1607,11 @@ const DarkroomSimulator = {
         rc.drawImage(this.workCanvas, 0, 0);
 
         // Show result canvas, hide placeholder & img
-        document.getElementById('result-placeholder')?.classList.add('hidden');
         this.resultCanvasEl.classList.remove('hidden');
         if (this.resultImageEl) this.resultImageEl.classList.add('hidden');
     } else if (this.resultImageEl) {
         // Fallback path
         this.resultImageEl.src = this.workCanvas.toDataURL();
-        document.getElementById('result-placeholder')?.classList.add('hidden');
         this.resultImageEl.classList.remove('hidden');
     }
 
@@ -1406,8 +1627,8 @@ const DarkroomSimulator = {
     this.autoSaveProject();
   },
 
-  // Auto-save project to localStorage
-  autoSaveProject: function() {
+  // Auto-save project
+  autoSaveProject: async function() {
     if (!this.originalImage) {
       return; // Don't save if there's no image
     }
@@ -1417,14 +1638,6 @@ const DarkroomSimulator = {
       paperType: this.paperType,
       exposures: []
     };
-
-    // Convert original image to data URL
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = this.originalImage.width;
-    canvas.height = this.originalImage.height;
-    ctx.drawImage(this.originalImage, 0, 0);
-    project.imageDataURL = canvas.toDataURL('image/jpeg');
 
     // Save exposures and masks
     for (let i = 0; i < this.exposures.length; i++) {
@@ -1444,43 +1657,107 @@ const DarkroomSimulator = {
       });
     }
 
-    // Add result image to project
-    if (this.workCanvas) {
-      project.resultImageURL = this.workCanvas.toDataURL('image/jpeg');
-    }
-
-    // Generate a unique ID for the project or use existing one
-    let projectId = this.currentProjectId;
-    let isNewProject = false;
-
-    if (!projectId) {
-      projectId = Date.now().toString();
-      this.currentProjectId = projectId;
-      isNewProject = true;
-    }
-
-    project.id = projectId;
-
-    // Only set a new name for new projects
-    if (isNewProject) {
-      project.name = 'Project ' + new Date().toLocaleString();
+    // Check if we're using File System Access API
+    if (this.directoryHandle && this.currentFileHandle) {
+      // Save project data to a JSON file next to the image file
+      await this.saveProjectToFileSystem(project);
     } else {
-      // Try to get the existing project name
-      try {
-        const existingProject = JSON.parse(localStorage.getItem('darkroomProject_' + projectId));
-        if (existingProject && existingProject.name) {
-          project.name = existingProject.name;
-        } else {
+      // Legacy localStorage saving
+
+      // Convert original image to data URL
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = this.originalImage.width;
+      canvas.height = this.originalImage.height;
+      ctx.drawImage(this.originalImage, 0, 0);
+      project.imageDataURL = canvas.toDataURL('image/jpeg');
+
+      // Add result image to project
+      if (this.workCanvas) {
+        project.resultImageURL = this.workCanvas.toDataURL('image/jpeg');
+      }
+
+      // Generate a unique ID for the project or use existing one
+      let projectId = this.currentProjectId;
+      let isNewProject = false;
+
+      if (!projectId) {
+        projectId = Date.now().toString();
+        this.currentProjectId = projectId;
+        isNewProject = true;
+      }
+
+      project.id = projectId;
+
+      // Only set a new name for new projects
+      if (isNewProject) {
+        project.name = 'Project ' + new Date().toLocaleString();
+      } else {
+        // Try to get the existing project name
+        try {
+          const existingProject = JSON.parse(localStorage.getItem('darkroomProject_' + projectId));
+          if (existingProject && existingProject.name) {
+            project.name = existingProject.name;
+          } else {
+            project.name = 'Project ' + new Date().toLocaleString();
+          }
+        } catch (error) {
+          console.error('Error getting existing project name:', error);
           project.name = 'Project ' + new Date().toLocaleString();
         }
-      } catch (error) {
-        console.error('Error getting existing project name:', error);
-        project.name = 'Project ' + new Date().toLocaleString();
       }
-    }
 
-    // Save to localStorage
-    this.saveProjectToLocalStorage(projectId, project);
+      // Save to localStorage
+      this.saveProjectToLocalStorage(projectId, project);
+    }
+  },
+
+  // Save project to file system
+  saveProjectToFileSystem: async function(project) {
+    try {
+      if (!this.directoryHandle || !this.currentFileHandle) {
+        console.error('No directory or file handle available');
+        return;
+      }
+
+      // Check if we have permission to access the directory
+      if (!await ensureDirPermission()) {
+        console.warn('Permission to access directory was denied. Please select the folder again.');
+        return;
+      }
+
+      // Get the file name without extension
+      const fileName = this.currentFileHandle.name;
+      const baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+      const jsonFileName = baseName + '.json';
+
+      // Create or get the JSON file handle
+      let jsonFileHandle;
+      try {
+        // Try to get existing file
+        jsonFileHandle = await this.directoryHandle.getFileHandle(jsonFileName);
+      } catch (error) {
+        // File doesn't exist, create it
+        jsonFileHandle = await this.directoryHandle.getFileHandle(jsonFileName, { create: true });
+      }
+
+      // Create a writable stream
+      const writable = await jsonFileHandle.createWritable();
+
+      // Convert project to JSON string
+      const jsonString = JSON.stringify(project);
+
+      // Write the JSON data
+      await writable.write(jsonString);
+
+      // Close the stream
+      await writable.close();
+
+      console.log('Project saved to file system:', jsonFileName);
+    } catch (error) {
+      console.error('Error saving project to file system:', error);
+      alert('Error saving project: ' + error.message);
+    }
   },
 
   // Generate histogram data from image data
@@ -1595,7 +1872,7 @@ const DarkroomSimulator = {
   },
 
   // Save project to a JSON file and localStorage
-  saveProject: function() {
+  saveProject: async function() {
     if (!this.originalImage) {
       alert('Please load an image first.');
       return;
@@ -1606,14 +1883,6 @@ const DarkroomSimulator = {
       paperType: this.paperType,
       exposures: []
     };
-
-    // Convert original image to data URL
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = this.originalImage.width;
-    canvas.height = this.originalImage.height;
-    ctx.drawImage(this.originalImage, 0, 0);
-    project.imageDataURL = canvas.toDataURL('image/jpeg');
 
     // Save exposures and masks
     for (let i = 0; i < this.exposures.length; i++) {
@@ -1633,57 +1902,76 @@ const DarkroomSimulator = {
       });
     }
 
-    // Add result image to project
-    if (this.workCanvas) {
-      project.resultImageURL = this.workCanvas.toDataURL('image/jpeg');
-    }
+    // Check if we're using File System Access API
+    if (this.directoryHandle && this.currentFileHandle) {
+      // Save project data to a JSON file next to the image file
+      await this.saveProjectToFileSystem(project);
 
-    // Generate a unique ID for the project or use existing one
-    let projectId = this.currentProjectId;
-    let isNewProject = false;
-
-    if (!projectId) {
-      projectId = Date.now().toString();
-      this.currentProjectId = projectId;
-      isNewProject = true;
-    }
-
-    project.id = projectId;
-
-    // Only set a new name for new projects
-    if (isNewProject) {
-      project.name = 'Project ' + new Date().toLocaleString();
+      // Show confirmation
+      alert('Project saved successfully to ' + this.currentFileHandle.name.replace(/\.[^/.]+$/, '.json'));
     } else {
-      // Try to get the existing project name
-      try {
-        const existingProject = JSON.parse(localStorage.getItem('darkroomProject_' + projectId));
-        if (existingProject && existingProject.name) {
-          project.name = existingProject.name;
-        } else {
+      // Legacy localStorage saving
+
+      // Convert original image to data URL
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = this.originalImage.width;
+      canvas.height = this.originalImage.height;
+      ctx.drawImage(this.originalImage, 0, 0);
+      project.imageDataURL = canvas.toDataURL('image/jpeg');
+
+      // Add result image to project
+      if (this.workCanvas) {
+        project.resultImageURL = this.workCanvas.toDataURL('image/jpeg');
+      }
+
+      // Generate a unique ID for the project or use existing one
+      let projectId = this.currentProjectId;
+      let isNewProject = false;
+
+      if (!projectId) {
+        projectId = Date.now().toString();
+        this.currentProjectId = projectId;
+        isNewProject = true;
+      }
+
+      project.id = projectId;
+
+      // Only set a new name for new projects
+      if (isNewProject) {
+        project.name = 'Project ' + new Date().toLocaleString();
+      } else {
+        // Try to get the existing project name
+        try {
+          const existingProject = JSON.parse(localStorage.getItem('darkroomProject_' + projectId));
+          if (existingProject && existingProject.name) {
+            project.name = existingProject.name;
+          } else {
+            project.name = 'Project ' + new Date().toLocaleString();
+          }
+        } catch (error) {
+          console.error('Error getting existing project name:', error);
           project.name = 'Project ' + new Date().toLocaleString();
         }
-      } catch (error) {
-        console.error('Error getting existing project name:', error);
-        project.name = 'Project ' + new Date().toLocaleString();
       }
+
+      // Convert project to JSON string
+      const jsonString = JSON.stringify(project);
+
+      // Save to localStorage
+      this.saveProjectToLocalStorage(projectId, project);
+
+      // Create a download link
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'darkroom-project.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
-
-    // Convert project to JSON string
-    const jsonString = JSON.stringify(project);
-
-    // Save to localStorage
-    this.saveProjectToLocalStorage(projectId, project);
-
-    // Create a download link
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'darkroom-project.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   },
 
   // Load project from a JSON file
@@ -1738,13 +2026,16 @@ const DarkroomSimulator = {
             this.createExposureElement(exposure);
           }
 
+          // Make sure mask canvas is initialized and positioned before selecting exposure
+          if (this.negativeImage) {
+            this.initMaskCanvas();
+            this.positionMaskCanvasToImage();
+          }
+
           // Select first exposure if any exist
           if (this.exposures.length > 0) {
             this.selectExposure(this.exposures[0].id);
           }
-
-          // Update remove buttons state
-          this.updateRemoveButtons();
 
           // Process image
           this.requestProcess();
@@ -1874,26 +2165,41 @@ const DarkroomSimulator = {
         this.createExposureElement(exposure);
       }
 
+      // Make sure mask canvas is initialized and positioned before selecting exposure
+      if (this.negativeImage) {
+        this.initMaskCanvas();
+        this.positionMaskCanvasToImage();
+      }
+
       // Select first exposure if any exist
       if (this.exposures.length > 0) {
         this.selectExposure(this.exposures[0].id);
       }
-
-      // Update remove buttons state
-      this.updateRemoveButtons();
-
       // Process image
       this.requestProcess();
     };
     img.src = project.imageDataURL;
   },
 
+  // File System Access API variables
+  directoryHandle: null,
+  currentFileHandle: null,
+
   // Check URL parameters for loading projects or new images
   checkUrlParameters: function() {
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
 
-    // Check if we're loading a project from localStorage
+    // Check if we're using File System Access API
+    if (urlParams.has('fileSystem')) {
+      const fileName = sessionStorage.getItem('currentImageFileName');
+      if (fileName) {
+        this.loadProjectFromFileSystem(fileName);
+        return;
+      }
+    }
+
+    // Check if we're loading a project from localStorage (legacy support)
     if (urlParams.has('projectId')) {
       const projectId = urlParams.get('projectId');
       this.loadProjectFromLocalStorage(projectId);
@@ -1924,10 +2230,749 @@ const DarkroomSimulator = {
       };
       img.src = imageDataURL;
     }
+  },
+
+  // Load project from File System Access API
+  loadProjectFromFileSystem: async function(fileName) {
+    try {
+      // Try to get the directory handle
+      if (!this.directoryHandle) {
+        // Check if we have a saved folder name in localStorage
+        const savedFolderName = localStorage.getItem('selectedFolderName');
+
+        // Try to get the directory handle from index.html if it was passed via sessionStorage
+        if (sessionStorage.getItem('directoryHandleRequest')) {
+          try {
+            // This is a special case where we're coming directly from index.html
+            // and the directory was just selected, so we don't need to show the picker again
+            this.directoryHandle = await window.showDirectoryPicker({
+              id: 'darkroom-folder',
+              mode: 'readwrite',
+              // Skip the picker UI if possible (depends on browser implementation)
+              startIn: 'downloads'
+            });
+
+            // Clear the request flag
+            sessionStorage.removeItem('directoryHandleRequest');
+          } catch (error) {
+            console.error('Error getting directory handle from session:', error);
+            // Fall through to normal picker flow
+          }
+        }
+
+        // If we still don't have a directory handle, show the picker
+        if (!this.directoryHandle) {
+          try {
+            // Use the File System Access API with a consistent ID
+            // This helps the browser remember the permission without showing a picker
+            this.directoryHandle = await window.showDirectoryPicker({
+              id: 'darkroom-folder',
+              mode: 'readwrite'
+            });
+
+            // If we have a saved folder name, verify it matches
+            if (savedFolderName && this.directoryHandle.name !== savedFolderName) {
+              console.log(`Note: Selected folder "${this.directoryHandle.name}" differs from previously saved folder "${savedFolderName}"`);
+              // Update the saved folder name
+              localStorage.setItem('selectedFolderName', this.directoryHandle.name);
+            }
+          } catch (error) {
+            console.error('Error getting directory handle:', error);
+            if (error.name === 'AbortError') {
+              // User cancelled the picker
+              alert('Please select the folder containing your images.');
+              window.location.href = 'index.html';
+              return;
+            } else {
+              // Other error
+              alert('Error accessing folder: ' + error.message);
+              window.location.href = 'index.html';
+              return;
+            }
+          }
+        }
+      }
+
+      // Check if we have permission to access the directory
+      if (!await ensureDirPermission()) {
+        console.warn('Permission to access directory was denied. Please select the folder again.');
+        alert('Permission to access folder was denied. Please select the folder again.');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // Get the file handle for the image
+      try {
+        this.currentFileHandle = await this.directoryHandle.getFileHandle(fileName);
+      } catch (error) {
+        console.error('Error getting file handle:', error);
+        alert('Could not find the image file. Please select it again from the contact sheet.');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // Get the file from the handle
+      const file = await this.currentFileHandle.getFile();
+
+      // Load the image
+      const img = new Image();
+      img.onload = async () => {
+        // Store original image
+        this.originalImage = img;
+
+        // Convert to B&W negative
+        this.convertToNegative(img);
+
+        // Try to load associated JSON file with project data
+        const jsonFileName = fileName.substring(0, fileName.lastIndexOf('.')) + '.json';
+        try {
+          const jsonFileHandle = await this.directoryHandle.getFileHandle(jsonFileName);
+          const jsonFile = await jsonFileHandle.getFile();
+          const jsonText = await jsonFile.text();
+          const project = JSON.parse(jsonText);
+
+          // Set paper type
+          this.paperType = project.paperType;
+          document.getElementById('paper-type').value = project.paperType;
+          this.updatePaperInfo();
+
+          // Clear existing exposures
+          this.exposures = [];
+          document.getElementById('exposures-list').innerHTML = '';
+
+          // Create exposures
+          for (let i = 0; i < project.exposures.length; i++) {
+            const savedExposure = project.exposures[i];
+
+            // Create new exposure object
+            const exposure = {
+              id: savedExposure.id,
+              time: savedExposure.time,
+              grade: savedExposure.grade,
+              mask: null
+            };
+
+            // Convert mask array back to Float32Array if it exists
+            if (savedExposure.mask) {
+              exposure.mask = new Float32Array(savedExposure.mask);
+            }
+
+            // Add to exposures array
+            this.exposures.push(exposure);
+
+            // Create exposure UI element
+            this.createExposureElement(exposure);
+          }
+
+          // Make sure mask canvas is initialized and positioned before selecting exposure
+          if (this.negativeImage) {
+            this.initMaskCanvas();
+            this.positionMaskCanvasToImage();
+          }
+
+          // Select first exposure if any exist
+          if (this.exposures.length > 0) {
+            this.selectExposure(this.exposures[0].id);
+          }
+        } catch (error) {
+          // No JSON file found or error reading it - start with default settings
+          console.log('No project data found or error reading it:', error);
+
+          // Add default exposure
+          if (this.exposures.length === 0) {
+            this.addExposure();
+          }
+        }
+
+        // Process image
+        this.requestProcess();
+      };
+
+      // Create object URL for the file
+      img.src = URL.createObjectURL(file);
+
+      // Clean up object URL when done
+      img.onload = function() {
+        URL.revokeObjectURL(img.src);
+      };
+    } catch (error) {
+      console.error('Error loading project from file system:', error);
+      alert('Error loading project: ' + error.message);
+    }
   }
 };
 
+// Contact Sheet functionality
+// File System Access API variables
+let directoryHandle = null;
+let fileHandles = [];
+let currentFileHandle = null;
+
+// Check if File System Access API is supported
+const isFileSystemAccessSupported = 'showDirectoryPicker' in window;
+
+// View switching functions
+function showContactView() {
+  document.getElementById('contact-view').classList.remove('hidden');
+  document.getElementById('darkroom-view').classList.remove('active');
+}
+
+function showDarkroomView() {
+  document.getElementById('contact-view').classList.add('hidden');
+  document.getElementById('darkroom-view').classList.add('active');
+
+  // Initialize the darkroom simulator if it hasn't been initialized yet
+  if (typeof DarkroomSimulator !== 'undefined' && !DarkroomSimulator.initialized) {
+    DarkroomSimulator.init();
+    DarkroomSimulator.initialized = true;
+  }
+}
+
+// Select a folder using File System Access API
+async function selectFolder() {
+  try {
+    if (!isFileSystemAccessSupported) {
+      alert('Your browser does not support the File System Access API. Please use Chrome or Edge.');
+      return;
+    }
+
+    // Show directory picker
+    directoryHandle = await window.showDirectoryPicker();
+
+    // Save the directory handle to localStorage and IndexedDB
+    try {
+      // Store the folder name in localStorage (for UI display)
+      localStorage.setItem('selectedFolderName', directoryHandle.name);
+
+      // Persist the handle (so we can reopen without user input next time)
+      try {
+        await idbSet('directoryHandle', directoryHandle);
+      } catch (e) {
+        console.warn('Could not persist directory handle:', e);
+      }
+    } catch (storageError) {
+      console.error('Error saving folder to localStorage:', storageError);
+    }
+
+    // Scan for JPEG files in the folder
+    await scanFolderForImages();
+  } catch (error) {
+    console.error('Error selecting folder:', error);
+    if (error.name !== 'AbortError') {
+      alert('Error selecting folder: ' + error.message);
+    }
+  }
+}
+
+// Scan the selected folder for JPEG files
+async function scanFolderForImages() {
+  if (!directoryHandle) return;
+
+  // Check if we have permission to access the directory
+  if (!await ensureDirPermission()) {
+    console.warn('Permission to access directory was denied. Please select the folder again.');
+    return;
+  }
+
+  try {
+    fileHandles = [];
+
+    // Iterate through all files in the directory
+    for await (const entry of directoryHandle.values()) {
+      if (entry.kind === 'file') {
+        const name = entry.name.toLowerCase();
+        // Check if the file is a JPEG
+        if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
+          fileHandles.push(entry);
+        }
+      }
+    }
+
+    console.log(`Found ${fileHandles.length} JPEG files in the folder`);
+
+    // Rebuild the contact sheet with the found images
+    SHEETS.forEach(buildSheet);
+  } catch (error) {
+    console.error('Error scanning folder:', error);
+    alert('Error scanning folder: ' + error.message);
+  }
+}
+
+// Get project data from a JSON file next to the JPEG
+async function getProjectDataForImage(fileHandle) {
+  try {
+    const jsonFileName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf('.')) + '.json';
+
+    // Try to get the JSON file with the same name
+    try {
+      const jsonFileHandle = await directoryHandle.getFileHandle(jsonFileName);
+      const file = await jsonFileHandle.getFile();
+      const text = await file.text();
+      return JSON.parse(text);
+    } catch (error) {
+      // JSON file doesn't exist or can't be read, which is fine for new images
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting project data:', error);
+    return null;
+  }
+}
+
+// Open project in darkroom view
+async function openProject(fileHandle) {
+  try {
+    // Check if we have permission to access the directory
+    if (!await ensureDirPermission()) {
+      console.warn('Permission to access directory was denied. Please select the folder again.');
+      return;
+    }
+
+    // Store the current file handle
+    currentFileHandle = fileHandle;
+
+    // Get the file from the handle
+    const file = await fileHandle.getFile();
+
+    // Load the image
+    const img = new Image();
+
+    // Create object URL for the file
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = async () => {
+      // Clean up object URL when done
+      URL.revokeObjectURL(objectUrl);
+
+      // Resize the image if needed
+      const processedImg = resizeImageIfNeeded(img);
+
+      // Store the image in DarkroomSimulator
+      DarkroomSimulator.directoryHandle = directoryHandle;
+      DarkroomSimulator.currentFileHandle = currentFileHandle;
+      DarkroomSimulator.originalImage = processedImg;
+
+      // Convert to B&W negative
+      DarkroomSimulator.convertToNegative(processedImg);
+
+      // Try to load associated JSON file with project data
+      const jsonFileName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf('.')) + '.json';
+      try {
+        const jsonFileHandle = await directoryHandle.getFileHandle(jsonFileName);
+        const jsonFile = await jsonFileHandle.getFile();
+        const jsonText = await jsonFile.text();
+        const project = JSON.parse(jsonText);
+
+        // Set paper type
+        DarkroomSimulator.paperType = project.paperType;
+        document.getElementById('paper-type').value = project.paperType;
+        DarkroomSimulator.updatePaperInfo();
+
+        // Clear existing exposures
+        DarkroomSimulator.exposures = [];
+        document.getElementById('exposures-list').innerHTML = '';
+
+        // Create exposures
+        for (let i = 0; i < project.exposures.length; i++) {
+          const savedExposure = project.exposures[i];
+
+          // Create new exposure object
+          const exposure = {
+            id: savedExposure.id,
+            time: savedExposure.time,
+            grade: savedExposure.grade,
+            mask: null
+          };
+
+          // Convert mask array back to Float32Array if it exists
+          if (savedExposure.mask) {
+            exposure.mask = new Float32Array(savedExposure.mask);
+          }
+
+          // Add to exposures array
+          DarkroomSimulator.exposures.push(exposure);
+
+          // Create exposure UI element
+          DarkroomSimulator.createExposureElement(exposure);
+        }
+
+        // Select first exposure if any exist
+        if (DarkroomSimulator.exposures.length > 0) {
+          DarkroomSimulator.selectExposure(DarkroomSimulator.exposures[0].id);
+        }
+      } catch (error) {
+        // No JSON file found or error reading it - start with default settings
+        console.log('No project data found or error reading it:', error);
+
+        // Add default exposure
+        if (DarkroomSimulator.exposures.length === 0) {
+          DarkroomSimulator.addExposure();
+        }
+      }
+
+      // Process image
+      DarkroomSimulator.requestProcess();
+
+      // Switch to darkroom view
+      showDarkroomView();
+    };
+
+    // Set the image source to load it
+    img.src = objectUrl;
+  } catch (error) {
+    console.error('Error opening project:', error);
+    alert('Error opening file: ' + error.message);
+  }
+}
+
+// Handle file selection for new project
+async function handleFileSelection(fileHandle) {
+  try {
+    // Store the current file handle
+    currentFileHandle = fileHandle;
+
+    // Get the file from the handle
+    const file = await fileHandle.getFile();
+
+    // Process the file directly without using sessionStorage
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      // Clean up object URL
+      URL.revokeObjectURL(objectUrl);
+
+      // Resize the image if needed
+      const processedImg = resizeImageIfNeeded(img);
+
+      // Store the image in DarkroomSimulator
+      DarkroomSimulator.directoryHandle = directoryHandle;
+      DarkroomSimulator.currentFileHandle = currentFileHandle;
+      DarkroomSimulator.originalImage = processedImg;
+
+      // Reset current project ID for auto-save (this is a new project)
+      DarkroomSimulator.currentProjectId = null;
+
+      // Convert to B&W negative
+      DarkroomSimulator.convertToNegative(processedImg);
+
+      // Add default exposure if needed
+      if (DarkroomSimulator.exposures.length === 0) {
+        DarkroomSimulator.addExposure();
+      }
+
+      // Process image
+      DarkroomSimulator.requestProcess();
+
+      // Switch to darkroom view
+      showDarkroomView();
+    };
+
+    // Set the image source to load it
+    img.src = objectUrl;
+  } catch (error) {
+    console.error('Error handling file selection:', error);
+    alert('Error opening file: ' + error.message);
+  }
+}
+
+// Helper function to resize an image if needed
+function resizeImageIfNeeded(img) {
+  // Check if image has valid dimensions
+  if (!img.width || !img.height) {
+    console.error('Image has invalid dimensions in resizeImageIfNeeded:', img.width, 'x', img.height);
+    return img; // Return original image to prevent further errors
+  }
+
+  // Check if the image needs resizing
+  const maxDimension = 1200;
+  if (img.width <= maxDimension && img.height <= maxDimension) {
+    return img; // No resizing needed
+  }
+
+  // Create canvas for resizing
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Calculate new dimensions
+  let width = img.width;
+  let height = img.height;
+
+  if (width > height) {
+    height = Math.round(height * (maxDimension / width));
+    width = maxDimension;
+  } else {
+    width = Math.round(width * (maxDimension / height));
+    height = maxDimension;
+  }
+
+  // Resize image
+  canvas.width = width;
+  canvas.height = height;
+  ctx.drawImage(img, 0, 0, width, height);
+
+  // Create a new image with the resized dimensions
+  const resizedImg = new Image();
+
+  // Set up onload handler to ensure the image is fully loaded
+  resizedImg.onload = function() {
+    console.log('Resized image loaded with dimensions:', resizedImg.width, 'x', resizedImg.height);
+  };
+
+  // Set the source after setting up the onload handler
+  resizedImg.src = canvas.toDataURL('image/jpeg', 0.85);
+
+  // Return the original image to ensure we have valid dimensions
+  // The defensive check in convertToNegative will prevent errors
+  return img;
+}
+
+// ====== Build a grid of tiles from a single frame image ======
+const FRAME_SRC = 'frame-tile.png';        // your single-frame PNG/JPG
+const SHEETS = ['sheetA','sheetB'];        // ids of grids to populate
+
+// Load once to set accurate aspect ratio for tiles
+const tileImg = new Image();
+tileImg.src = FRAME_SRC;
+tileImg.onload = () => {
+  SHEETS.forEach(buildSheet);
+};
+tileImg.onerror = () => {
+  // Fallback if image fails; still build sheets
+  SHEETS.forEach(buildSheet);
+};
+
+async function buildSheet(gridId) {
+  const grid = document.getElementById(gridId);
+  if(!grid) return;
+
+  // Clear the grid first
+  grid.innerHTML = '';
+
+  if (directoryHandle && fileHandles.length > 0) {
+    // Calculate the number of columns based on the number of images
+    // We'll use a maximum of 5 columns
+    const cols = Math.min(5, fileHandles.length);
+    // Calculate the number of rows needed to display all images
+    const rows = Math.ceil(fileHandles.length / cols);
+
+    grid.style.setProperty('--rows', rows);
+    grid.style.setProperty('--cols', cols);
+
+    // Create frames for existing images from the folder
+    for (let i = 0; i < fileHandles.length; i++) {
+      const fileHandle = fileHandles[i];
+      const frame = await createFrameFromFileHandle(fileHandle, i);
+      grid.appendChild(frame);
+    }
+  } else {
+    // If no folder is selected, show only a single frame with the folder prompt
+    grid.style.setProperty('--rows', 1);
+    grid.style.setProperty('--cols', 1);
+    grid.classList.add('single-frame'); // Add class for single frame
+
+    const frame = createFolderPromptFrame();
+    grid.appendChild(frame);
+  }
+}
+
+// Create a frame that prompts the user to select a folder
+function createFolderPromptFrame() {
+  const frame = document.createElement('div');
+  frame.className = 'frame is-empty';
+
+  // Frame background (tile)
+  frame.style.backgroundImage = `url("${FRAME_SRC}")`;
+
+  // Inner window + hit area
+  const windowEl = document.createElement('div');
+  windowEl.className = 'window';
+
+  const hit = document.createElement('button');
+  hit.type = 'button';
+  hit.className = 'hit';
+  hit.style.display = 'flex';
+  hit.style.alignItems = 'center';
+  hit.style.justifyContent = 'center';
+  hit.innerHTML = '<div style="text-align: center; padding: 10px; color: white;">Select a folder to view images</div>';
+
+  // Click handler
+  hit.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    selectFolder();
+  });
+
+  windowEl.appendChild(hit);
+  frame.appendChild(windowEl);
+  return frame;
+}
+
+// Create a frame from a file handle
+async function createFrameFromFileHandle(fileHandle, index) {
+  const frame = document.createElement('div');
+  frame.className = 'frame is-existing';
+
+  // Slight random rotation for wax outline only
+  frame.style.setProperty('--wax-rot', `${(Math.random()*2-1)*0.5}deg`);
+
+  // random tiling
+  const x = Math.floor(Math.random() * 100) + 'px';
+  document.body.style.setProperty('--bg-offset-x', x);
+
+  // Frame background (tile)
+  frame.style.backgroundImage = `url("${FRAME_SRC}")`;
+
+  // Inner window + hit area
+  const windowEl = document.createElement('div');
+  windowEl.className = 'window';
+
+  const hit = document.createElement('button');
+  hit.type = 'button';
+  hit.className = 'hit';
+  hit.dataset.index = index;
+
+  try {
+    // Get the file from the handle
+    const file = await fileHandle.getFile();
+
+    // Create an image element
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.alt = file.name;
+
+    // Check if image is portrait and rotate if needed
+    img.onload = function() {
+      if (img.naturalHeight > img.naturalWidth) {
+        // Portrait image - add portrait class for rotation
+        img.classList.add('portrait');
+      }
+      // Revoke the object URL to free memory
+      URL.revokeObjectURL(img.src);
+    };
+
+    hit.appendChild(img);
+
+    // Store file handle for click handler
+    hit.dataset.fileName = fileHandle.name;
+
+    // Add click handler
+    hit.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      openProject(fileHandle);
+    });
+  } catch (error) {
+    console.error('Error creating frame from file handle:', error);
+    hit.textContent = 'Error loading image';
+  }
+
+  windowEl.appendChild(hit);
+  frame.appendChild(windowEl);
+  return frame;
+}
+
+// Create an empty frame
+function createEmptyFrame(index) {
+  const frame = document.createElement('div');
+  frame.className = 'frame is-empty';
+
+  // Slight random rotation for wax outline only
+  frame.style.setProperty('--wax-rot', `${(Math.random()*2-1)*0.5}deg`);
+
+  // Frame background (tile)
+  frame.style.backgroundImage = `url("${FRAME_SRC}")`;
+
+  // Inner window + hit area
+  const windowEl = document.createElement('div');
+  windowEl.className = 'window';
+
+  const hit = document.createElement('button');
+  hit.type = 'button';
+  hit.className = 'hit';
+  hit.dataset.index = index;
+
+  // Click handler for empty frames
+  hit.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (directoryHandle) {
+      // If a folder is selected, prompt to select a new image
+      alert('Please select images from your file system and place them in the selected folder.');
+    } else {
+      // If no folder is selected, prompt to select a folder
+      selectFolder();
+    }
+  });
+
+  windowEl.appendChild(hit);
+  frame.appendChild(windowEl);
+  return frame;
+}
+
+// Function to check and request permission for a directory handle
+async function ensureDirPermission() {
+  if (!directoryHandle) return false;
+  let p = await directoryHandle.queryPermission({ mode: 'readwrite' });
+  if (p === 'prompt') p = await directoryHandle.requestPermission({ mode: 'readwrite' });
+  return p === 'granted';
+}
+
+// Restore the directory handle from IndexedDB
+async function restoreDirectoryHandle() {
+  try {
+    const saved = await idbGet('directoryHandle');
+    if (!saved) return false;
+
+    // Check permission
+    let perm = await saved.queryPermission({ mode: 'readwrite' });
+    if (perm === 'prompt') {
+      perm = await saved.requestPermission({ mode: 'readwrite' });
+    }
+    if (perm !== 'granted') return false;
+
+    directoryHandle = saved;
+
+    // Update UI with folder name
+    const folderName = directoryHandle.name;
+    localStorage.setItem('selectedFolderName', folderName);
+
+    // Scan for JPEG files in the folder
+    await scanFolderForImages();
+    return true;
+  } catch (e) {
+    console.warn('restoreDirectoryHandle failed:', e);
+    return false;
+  }
+}
+
 // Initialize the application when the DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   DarkroomSimulator.init();
+  DarkroomSimulator.initialized = true;
+
+  // Set up back button in darkroom view
+  document.getElementById('back').addEventListener('click', async () => {
+    showContactView();
+
+    // If we have a directory handle, scan for images to refresh the contact sheet
+    if (directoryHandle) {
+      await scanFolderForImages();
+    }
+  });
+
+  // Check if File System Access API is supported
+  if (!isFileSystemAccessSupported) {
+    console.warn('Your browser does not support the File System Access API. Please use Chrome or Edge.');
+    SHEETS.forEach(buildSheet);
+    return;
+  }
+
+  // Try to restore previously authorized handle (no picker)
+  const restored = await restoreDirectoryHandle();
+  if (!restored) {
+    // No handle or permission — build empty grids and wait for user to click "Select Folder"
+    SHEETS.forEach(buildSheet);
+    const last = localStorage.getItem('selectedFolderName');
+    if (last) {
+      console.log(`Last used folder: ${last} (click to reopen)`);
+    }
+  }
 });

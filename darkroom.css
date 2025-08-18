@@ -1,0 +1,582 @@
+/* Darkroom-specific styles */
+
+/* Import Digital Numbers font from cdnfonts.com */
+@import url('https://fonts.cdnfonts.com/css/digital-numbers');
+
+.container {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  background-color: var(--panel-background);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+main {
+  padding: 3px;
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: row;
+}
+
+.panel {
+  background-color: var(--panel-background);
+  border-radius: var(--border-radius);
+  margin: 3px;
+  padding: 5px;
+  overflow: auto;
+  color: var(--text-color);
+}
+
+#images-section {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+}
+
+#exposures-section {
+  flex: 1;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.controls-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex: 1;
+  min-width: 150px;
+  gap: 20px;
+}
+
+.paper-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#paper-type {
+  padding: 2px;
+  border-radius: var(--border-radius);
+  border: none;
+  background-color: var(--dark-red);
+  color: var(--light-red);
+  font-size: 0.9rem;
+}
+
+.images-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  flex: 1;
+  overflow: hidden;
+  max-height: calc(100% - 100px);
+  pointer-events: auto;
+  gap: 10px;
+}
+
+.negative-container, .result-container {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  border-radius: var(--border-radius);
+  background-color: var(--light-red);
+  pointer-events: auto;
+}
+
+.negative-container { 
+  position: relative;
+  flex: 1;
+}
+
+#negative-image {
+  display:block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  pointer-events: none;
+}
+
+.result-container {
+  flex: 1;
+}
+
+.result-container canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: block;
+}
+
+.placeholder-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Images */
+.negative-container img, .result-container img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--border-radius);
+}
+
+/* Mask Canvas */
+#mask-canvas {
+  position: absolute;
+  z-index: 2;
+  pointer-events: auto;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#preview-canvas {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dodge-burn-tools {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: var(--light-color);
+  border-radius: var(--border-radius);
+}
+
+.tool-buttons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.tool-button {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px;
+}
+
+.square-button {
+  width: 48px;
+  height: 48px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1/1;
+  font-size: 1.3rem;
+}
+
+.tool-button.active {
+  background-color: var(--accent-color);
+}
+
+.tool-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tool-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  align-items: center;
+}
+
+.control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+}
+
+.control label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+
+.control label .tool-icon {
+  font-size: 1.5rem;
+}
+
+.control input[type="range"] {
+  width: 100px;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Slider Track */
+input[type="range"]::-webkit-slider-runnable-track {
+  background: #3c0306;
+  height: 5px;
+  border-radius: 5px;
+  border: 1px solid var(--light-red);
+}
+
+input[type="range"]::-moz-range-track {
+  background: #3c0306;
+  height: 5px;
+  border-radius: 5px;
+  border: 1px solid var(--light-red);
+}
+
+/* Slider Thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -5px;
+  background-color: red;
+  height: 15px;
+  width: 15px;
+  border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-thumb {
+  border: none;
+  background-color: #9e0a0a;
+  height: 15px;
+  width: 15px;
+  border-radius: 50%;
+}
+
+#exposures-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 5px;
+  margin-bottom: 5px;
+}
+
+.exposure-controls {
+  margin: 5px 0;
+  text-align: center;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+#add-exposure {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#add-exposure .tool-icon {
+  font-size: 1.2rem;
+  margin-right: 8px;
+}
+
+#histogram-container {
+  background-color: var(--dark-red);
+  border-radius: var(--border-radius);
+  flex-shrink: 0;
+}
+
+#histogram-canvas {
+  width: 100%;
+  height: 150px;
+  background-color: var(--darkroom-histogram-bg);
+  border: none;
+  border-radius: var(--border-radius);
+}
+
+.exposure-item {
+  background-color: var(--primary-color);
+  padding: var(--standard-padding);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--standard-padding);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exposure-item:hover {
+  background-color: #e0e0e0;
+}
+
+.exposure-item.selected {
+  background-color: #e0e0e0;
+  box-shadow: var(--shadow);
+}
+
+.exposure-settings {
+  margin: 8px 0;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.setting {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setting label {
+  font-weight: bold;
+  font-size: 0.75rem;
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.setting select {
+  width: auto;
+  min-width: 60px;
+  height: 36px;
+  padding: 2px;
+  border-radius: var(--border-radius);
+  border: none;
+  background-color: var(--dark-red);
+  color: var(--light-red);
+  font-size: 0.9rem;
+}
+
+.grade-selector {
+  position: relative;
+  width: auto;
+  min-width: 60px;
+  flex: 1;
+}
+
+.grade-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 36px;
+  border-radius: var(--border-radius);
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--light-red);
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+
+.grade-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 120px;
+  background-color: white;
+  border-radius: var(--border-radius);
+  z-index: 10;
+  display: none;
+  box-shadow: var(--shadow);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.grade-options.show {
+  display: block;
+}
+
+.grade-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--light-red);
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+
+.grade-option:hover {
+  opacity: 0.9;
+}
+
+.grade-0 { background-color: var(--grade-00-color); }
+.grade-1 { background-color: var(--grade-0-color); }
+.grade-2 { background-color: var(--grade-0-5-color); }
+.grade-3 { background-color: var(--grade-1-color); }
+.grade-4 { background-color: var(--grade-1-5-color); }
+.grade-5 { background-color: var(--grade-2-color); }
+.grade-6 { background-color: var(--grade-2-5-color); }
+.grade-7 { background-color: var(--grade-3-color); }
+.grade-8 { background-color: var(--grade-3-5-color); }
+.grade-9 { background-color: var(--grade-4-color); }
+.grade-10 { background-color: var(--grade-4-5-color); }
+.grade-11 { background-color: var(--grade-5-color); }
+
+.exposure-content {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.exposure-buttons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 5px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+
+.exposure-buttons .square-button {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  font-size: 1rem;
+}
+
+.dodge-mask-preview-container {
+  width: 90px;
+  height: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.dodge-mask-preview {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--border-radius);
+  background-color: white;
+}
+
+/* Darkroom-specific theme overrides */
+body:has(.darkroom-view.active) {
+  background-color: var(--darkroom-background);
+  background-image: none;
+}
+
+.darkroom-body {
+  background-color: var(--darkroom-background);
+  background-image: none;
+}
+
+.darkroom-view .container {
+  background-color: var(--darkroom-background);
+}
+
+.darkroom-view .panel {
+  background-color: var(--darkroom-panel-background);
+  color: var(--text-color);
+}
+
+.darkroom-view .negative-container, 
+.darkroom-view .result-container {
+  background-color: var(--darkroom-panel-background);
+}
+
+.darkroom-view .placeholder-message {
+  color: var(--text-color);
+}
+
+.darkroom-view select, 
+.darkroom-view input, 
+.darkroom-view button {
+  background-color: var(--darkroom-control-background);
+  color: var(--text-color);
+  border: 2px solid var(--light-red);
+}
+
+.darkroom-view option {
+  background-color: var(--darkroom-control-background);
+  color: var(--text-color);
+}
+
+.darkroom-view .exposure-item {
+  background-color: var(--darkroom-exposure-item);
+}
+
+.darkroom-view .exposure-item:hover {
+  background-color: var(--darkroom-exposure-item-hover);
+}
+
+.darkroom-view .exposure-item.selected {
+  background-color: var(--darkroom-exposure-item-selected);
+  border: 3px solid var(--light-red);
+}
+
+.darkroom-view .tool-icon {
+  filter: invert(12%) sepia(83%) saturate(5786%) hue-rotate(357deg) brightness(96%) contrast(113%);
+}
+
+.darkroom-view #paper-type {
+  font-size: 1.3rem;
+  color: var(--light-red);
+  font-weight: bold;
+}
+
+.darkroom-view .exposure-time {
+  font-family: 'Digital Numbers', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 1.3rem;
+  color: var(--light-red);
+  font-weight: bold;
+}
+
+.darkroom-view .grade-display {
+  font-size: 1.3rem;
+  color: var(--light-red);
+  font-weight: bold;
+}
+
+.darkroom-view #histogram-container {
+  background-color: var(--darkroom-exposure-item);
+}
+
+.darkroom-view #histogram-canvas {
+  background-color: var(--darkroom-histogram-bg);
+  border: none;
+}
