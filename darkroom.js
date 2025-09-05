@@ -2005,6 +2005,27 @@ const DarkroomSimulator = {
       this.drawMaskPoint(this.lastX, this.lastY);
     });
 
+    // Touch start handler
+    this.maskCanvas.addEventListener('touchstart', (e) => {
+      // Prevent default to stop scrolling
+      e.preventDefault();
+
+      // Save the current state before drawing
+      this.saveState();
+
+      this.isDrawing = true;
+      const rect = this._maskRect || (this._maskRect = this.maskCanvas.getBoundingClientRect());
+      const scaleX = this.maskCanvas.width / rect.width;
+      const scaleY = this.maskCanvas.height / rect.height;
+
+      const touch = e.touches[0];
+      this.lastX = (touch.clientX - rect.left) * scaleX;
+      this.lastY = (touch.clientY - rect.top) * scaleY;
+
+      // Draw a single point
+      this.drawMaskPoint(this.lastX, this.lastY);
+    });
+
     // Mouse move handler
     this.maskCanvas.addEventListener('mousemove', (e) => {
       const rect = this._maskRect || (this._maskRect = this.maskCanvas.getBoundingClientRect());
@@ -2027,6 +2048,32 @@ const DarkroomSimulator = {
       } else {
         // Draw preview circles
         this.drawPreviewCircles(x, y, scaleX, scaleY);
+      }
+    });
+
+    // Touch move handler
+    this.maskCanvas.addEventListener('touchmove', (e) => {
+      // Prevent default to stop scrolling
+      e.preventDefault();
+
+      const rect = this._maskRect || (this._maskRect = this.maskCanvas.getBoundingClientRect());
+      const scaleX = this.maskCanvas.width / rect.width;
+      const scaleY = this.maskCanvas.height / rect.height;
+
+      const touch = e.touches[0];
+      const x = (touch.clientX - rect.left) * scaleX;
+      const y = (touch.clientY - rect.top) * scaleY;
+
+      // Keep a copy of the previous point BEFORE updating
+      const prevX = this.lastX;
+      const prevY = this.lastY;
+
+      // Update last known position (used by preview + next segment)
+      this.lastX = x;
+      this.lastY = y;
+
+      if (this.isDrawing) {
+        this.drawMaskLine(prevX, prevY, x, y);  // ← use previous point
       }
     });
 
@@ -2060,6 +2107,14 @@ const DarkroomSimulator = {
 
     this.maskCanvas.addEventListener('mouseup', endDrawing);
     this.maskCanvas.addEventListener('mouseleave', endDrawing);
+    this.maskCanvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      endDrawing();
+    });
+    this.maskCanvas.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      endDrawing();
+    });
   },
 
   // ADD: builds a brush sprite when size/feather/tool changes
