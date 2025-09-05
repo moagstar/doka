@@ -160,6 +160,11 @@ body {
 
 /* Media queries for responsive design */
 @media (max-width: 768px) {
+  body {
+    overflow: auto;
+    height: auto;
+  }
+
   .button {
     width: 100%;
     margin-bottom: 10px;

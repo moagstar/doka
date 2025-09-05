@@ -48,8 +48,14 @@ main {
 
 /* Media queries for responsive design */
 @media (max-width: 768px) {
+  .container {
+    overflow: auto;
+    height: auto;
+  }
+
   main {
     flex-direction: column;
+    overflow: visible;
   }
 
   #images-section, #exposures-section {
@@ -67,6 +73,8 @@ main {
 
   #images-section {
     order: 2; /* Show images second */
+    min-height: 500px;
+    height: auto;
   }
 }
 
@@ -190,12 +198,16 @@ main {
     flex-direction: column;
     max-height: none;
     height: auto;
+    overflow: visible;
+    pointer-events: auto;
   }
 
   .negative-container, .result-container {
     width: 100%;
     height: 40vh;
-    margin-bottom: 10px;
+    min-height: 250px;
+    margin-bottom: 20px;
+    overflow: visible;
   }
 }
 
