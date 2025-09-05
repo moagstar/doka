@@ -380,12 +380,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // If we couldn't restore, show a message to select a folder
   if (!restored) {
-    const sheetA = document.getElementById('sheetA');
-    if (sheetA && sheetA.children.length === 0) {
+    const contactSheet = document.querySelector('.contact-sheet');
+    if (contactSheet) {
       const message = document.createElement('div');
       message.className = 'select-folder-message';
       message.textContent = 'Please select a folder containing JPEG images';
-      sheetA.appendChild(message);
+      contactSheet.appendChild(message);
     }
   }
 });

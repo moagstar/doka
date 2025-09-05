@@ -7,6 +7,23 @@
   z-index: 4;
 }
 
+@media (max-width: 768px) {
+  :root {
+    /* Reduce window margins for mobile to make images larger */
+    --win-left: 1%;
+    --win-right: 1%;
+    --win-top: 5%;
+    --win-bottom: 5%;
+    /* Adjust frame aspect ratio for mobile */
+    --frame-aspect: 1.2;
+  }
+
+  .contact-container {
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
 .contact-sheet{
   min-height:100vh;
   display:grid;
@@ -14,6 +31,13 @@
   scroll-snap-align:start;
   padding: 2vmin;
   z-index: 4;
+}
+
+@media (max-width: 768px) {
+  .contact-sheet {
+    padding: 4vmin 2vmin 100px 2vmin; /* Added bottom padding to make room for the button */
+    min-height: auto;
+  }
 }
 
 .sheet-grid{
@@ -24,6 +48,26 @@
   gap: var(--gap-y) var(--gap-x);
   width:min(95vw, 1500px);
   z-index: 4;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 1024px) {
+  .sheet-grid {
+    --cols: 3; /* Reduce columns for tablets */
+  }
+}
+
+@media (max-width: 768px) {
+  .sheet-grid {
+    --cols: 2; /* Further reduce columns for mobile */
+    width: 95vw; /* Use more screen width */
+  }
+}
+
+@media (max-width: 480px) {
+  .sheet-grid {
+    --cols: 1; /* Single column for very small screens */
+  }
 }
 
 /* Make single frame smaller when there's only one frame */
@@ -42,6 +86,17 @@
   background:#000;
   width:100%;
   overflow:visible;
+}
+
+@media (max-width: 768px) {
+  .frame {
+    margin-bottom: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 500px; /* Limit maximum width for very large screens */
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .frame::after {
@@ -75,6 +130,13 @@
   filter: grayscale(100%);
 }
 
+@media (max-width: 768px) {
+  .hit > img {
+    object-fit: contain;
+    padding: 0;
+  }
+}
+
 .hit > img.portrait {
   width: 69%;
   height: auto;
@@ -83,6 +145,13 @@
   transform: translate(-50%, -50%) rotate(-90deg);
   transform-origin: center center;
   object-fit: contain;
+}
+
+@media (max-width: 768px) {
+  .hit > img.portrait {
+    width: 90%;
+    padding: 0;
+  }
 }
 
 .hit::after{
@@ -124,6 +193,17 @@
   z-index: 20;
 }
 
+@media (max-width: 768px) {
+  .folder-select-container {
+    top: auto;
+    bottom: 20px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 .folder-select-button {
   background-color: #333;
   color: white;
@@ -133,6 +213,17 @@
   cursor: pointer;
   font-size: 16px;
   transition: background-color 0.2s;
+}
+
+@media (max-width: 768px) {
+  .folder-select-button {
+    padding: 15px;
+    font-size: 18px;
+    width: 100%;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .folder-select-button:hover {
@@ -145,6 +236,18 @@
   color: #ccc;
   max-width: 300px;
   word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .folder-path {
+    font-size: 16px;
+    max-width: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    order: -1; /* Display above the button when container is at the bottom */
+  }
 }
 
 .edited-indicator {
@@ -171,4 +274,13 @@
   background-color: rgba(255, 255, 255, 0.8);
   border-radius: 8px;
   box-shadow: var(--shadow);
+  z-index: 30;
+}
+
+@media (max-width: 768px) {
+  .select-folder-message {
+    width: 90%;
+    font-size: 20px;
+    padding: 25px 15px;
+  }
 }
