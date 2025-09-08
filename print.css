@@ -244,12 +244,7 @@
     grid-auto-flow: row !important;
   }
 
-  /* Control page breaks - 30 images per page (5 rows of 6 columns) */
-  .frame:nth-child(30n) {
-    page-break-after: always !important;
-    break-after: page !important;
-  }
-
+  /* Let the browser determine natural page breaks based on available space */
   /* Frame styling */
   .frame {
     page-break-inside: avoid !important;
