@@ -4,7 +4,14 @@
    and "Margins: None" in the print dialog.
    ======================================================================= */
 
-@page { size: A4 portrait; margin: 0; }
+@page { 
+  size: A4 landscape; 
+  margin-top: 5mm; /* Add margin at the top to prevent frames from printing at the edge */
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  background: black; /* Make the page background black to match the contact sheet */
+}
 
 @media print {
   /* Predictable sizing + keep colors */
@@ -13,12 +20,18 @@
 
   /* ---------- Tunables (mm) ---------- */
   :root{
-    --body-margin: 10mm;   /* inner margin on all sides */
+    --body-margin: 8mm;   /* reduced margin to fit more content */
     --header-h: 14mm;      /* height reserved for the paper selector bar */
     --gap: 4mm;            /* grid gap between cards (both directions) */
-    --page-h: 297mm;       /* A4 portrait height */
+    --page-h: 210mm;       /* A4 landscape height */
+    --page-w: 297mm;       /* A4 landscape width */
     --available: calc(var(--page-h) - (2 * var(--body-margin)) - var(--header-h));
     --card-fudge: 1.5mm;   /* safety so two rows always fit (raise if your printer clips) */
+
+    /* Contact sheet specific variables */
+    --contact-cols: 6;     /* number of columns in the contact sheet grid */
+    --contact-gap: 2mm;    /* gap between frames (vertical spacing between rows) */
+    --frame-border: 1mm;   /* border width around frames */
   }
 
   /* ---------- Paper header (visible) ---------- */
@@ -176,5 +189,118 @@
   .darkroom-view .panel,
   .darkroom-body {
     background: #fff !important;
+  }
+}
+
+/* ======================================================================= 
+   Contact Sheet Print Styles - Optimized for A4 paper
+   ======================================================================= */
+@media print {
+  /* Hide UI elements that shouldn't be printed */
+  .folder-select-container,
+  .folder-path,
+  .select-folder-message,
+  .edited-indicator,
+  .dustbin-icon {
+    display: none !important;
+  }
+
+  /* Basic page setup for contact sheet */
+  body:has(.contact-view:not(.hidden)) {
+    background: black !important;
+    margin: var(--body-margin) !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Contact sheet container */
+  .contact-container {
+    height: auto !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+  }
+
+  /* Contact sheet */
+  .contact-sheet {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: relative !important;
+  }
+
+  /* No title for the printed page */
+  .contact-sheet::before {
+    display: none !important;
+  }
+
+  /* Grid layout optimized for A4 */
+  .sheet-grid {
+    --cols: var(--contact-cols) !important;
+    gap-y: var(--contact-gap) !important;
+    width: calc(var(--page-w) - (2 * var(--body-margin))) !important;
+    margin: 0 auto !important;
+    grid-auto-flow: row !important;
+  }
+
+  /* Control page breaks - 30 images per page (5 rows of 6 columns) */
+  .frame:nth-child(30n) {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  /* Frame styling */
+  .frame {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    border: none !important; /* Remove border to avoid interference with film rebate */
+    box-shadow: none !important;
+    background: black !important; /* Match the background color of the frame in normal view */
+    aspect-ratio: 1.1 !important; /* Correct 35mm film frame aspect ratio (36mm × 24mm) */
+    height: auto !important;
+  }
+
+  /* Show decorative frame background (film rebate) */
+  .frame::after {
+    display: block !important;
+    background: center/100% 100% no-repeat url("frame-tile.png") !important;
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 3 !important;
+    pointer-events: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Window adjustments */
+  .window {
+    left: 2mm !important;
+    right: 2mm !important;
+    top: 2mm !important;
+    bottom: 2mm !important;
+  }
+
+  /* Image styling */
+  .hit {
+    cursor: default !important;
+  }
+
+  .hit > img {
+    filter: none !important; /* Remove grayscale filter for better print quality */
+    object-fit: contain !important;
+    padding: 0 !important;
+  }
+
+  /* Better handling of portrait images */
+  .hit > img.portrait {
+    width: 75% !important;
+    height: auto !important;
+    transform: translate(-50%, -50%) rotate(-90deg) !important;
+  }
+
+  /* Remove hover effects */
+  .hit::after {
+    display: none !important;
   }
 }

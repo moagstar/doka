@@ -41,7 +41,7 @@
 }
 
 .sheet-grid{
-  --cols: 5; --rows: 4;
+  --cols: 6; --rows: 4;
   display:grid;
   grid-template-columns: repeat(var(--cols), 1fr);
   grid-auto-rows: auto;
@@ -51,20 +51,32 @@
 }
 
 /* Responsive grid adjustments */
+@media (max-width: 1200px) {
+  .sheet-grid {
+    --cols: 6; /* Keep 6 columns for larger screens */
+  }
+}
+
 @media (max-width: 1024px) {
   .sheet-grid {
-    --cols: 3; /* Reduce columns for tablets */
+    --cols: 4; /* Reduce to 4 columns for medium-sized screens */
   }
 }
 
 @media (max-width: 768px) {
   .sheet-grid {
-    --cols: 2; /* Further reduce columns for mobile */
+    --cols: 3; /* Use 3 columns for tablets */
     width: 95vw; /* Use more screen width */
   }
 }
 
 @media (max-width: 480px) {
+  .sheet-grid {
+    --cols: 2; /* 2 columns for mobile phones */
+  }
+}
+
+@media (max-width: 320px) {
   .sheet-grid {
     --cols: 1; /* Single column for very small screens */
   }

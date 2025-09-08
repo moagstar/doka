@@ -73,6 +73,9 @@ async function scanFolderForImages() {
 
     console.log(`Found ${fileHandles.length} JPEG files in the folder`);
 
+    // Sort the file handles by filename for consistent ordering
+    fileHandles.sort((a, b) => a.name.localeCompare(b.name));
+
     // Rebuild the contact sheet with the found images
     SHEETS.forEach(buildSheet);
   } catch (error) {

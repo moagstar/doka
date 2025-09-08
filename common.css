@@ -57,7 +57,7 @@
   --wax-existing: #E23B2E;
   --wax-empty: #FFFFFF;
   --gap-x: 0rem;
-  --gap-y: 0rem;
+  --gap-y: 0.5rem;
   --frame-aspect: 1.11;
   --hover-inset: 0;
   --hover-scale: 1;
